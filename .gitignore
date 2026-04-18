@@ -1,0 +1,12 @@
+CLAUDE.md
+DESIGN.md
+design.md
+
+# Xcode build output
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# macOS
+.DS_Store
