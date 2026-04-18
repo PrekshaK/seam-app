@@ -1,8 +1,9 @@
 import SwiftUI
 import SwiftData
+import PencilKit
 
 struct SaveSketchSheet: View {
-    let strokes: [Stroke]
+    let drawing: PKDrawing
     let canvasSize: CGSize
     let onSave: (ClothingItem) -> Void
 
@@ -13,30 +14,26 @@ struct SaveSketchSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    private var closetService: ClosetService {
-        ClosetService(modelContext: modelContext)
-    }
-
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
                     // Sketch preview
-                    if let preview = CanvasRenderer.renderStrokes(strokes, size: canvasSize) {
+                    if let preview = renderPreview() {
                         Image(uiImage: preview)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(height: 200)
-                            .background(Color.white)
                             .cornerRadius(16)
-                            .shadow(color: .black.opacity(0.08), radius: 8)
+                            .clipped()
+                            .shadow(color: Color.warmShadow.opacity(0.08), radius: 8)
                     }
 
                     // Name
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Name (Optional)")
                             .font(.custom("PatrickHand-Regular", size: 16))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.antiqueTeal.opacity(0.6))
 
                         TextField("e.g., Blue Denim Jacket", text: $itemName)
                             .font(.custom("PatrickHand-Regular", size: 20))
@@ -48,7 +45,7 @@ struct SaveSketchSheet: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Category")
                             .font(.custom("PatrickHand-Regular", size: 16))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.antiqueTeal.opacity(0.6))
 
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 90))], spacing: 12) {
                             ForEach(ClothingCategory.allCases, id: \.self) { category in
@@ -75,7 +72,7 @@ struct SaveSketchSheet: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(RoundedRectangle(cornerRadius: 16).fill(Color.teal))
+                        .background(RoundedRectangle(cornerRadius: 16).fill(Color.terracotta))
                     }
                     .disabled(isSaving)
                     .padding(.bottom, 20)
@@ -95,8 +92,12 @@ struct SaveSketchSheet: View {
         }
     }
 
+    private func renderPreview() -> UIImage? {
+        drawing.imageOnPaper(canvasSize: canvasSize)
+    }
+
     private func saveItem() {
-        guard let sketchImage = CanvasRenderer.renderStrokes(strokes, size: canvasSize) else { return }
+        let sketchImage = drawing.transparentCropped(canvasSize: canvasSize)
         isSaving = true
         let item = ClothingItem(
             name: itemName.isEmpty ? "Untitled" : itemName,
@@ -129,7 +130,7 @@ struct CategoryButton: View {
             .foregroundColor(isSelected ? .white : .primary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(RoundedRectangle(cornerRadius: 12).fill(isSelected ? Color.teal : Color.gray.opacity(0.1)))
+            .background(RoundedRectangle(cornerRadius: 12).fill(isSelected ? Color.terracotta : Color.gray.opacity(0.1)))
         }
     }
 }

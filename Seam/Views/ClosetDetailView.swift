@@ -4,7 +4,6 @@ import SwiftData
 struct ClosetDetailView: View {
     let closet: Closet
 
-    @State private var showOutfitBuilder = false
     @State private var showDeleteClosetConfirm = false
 
     @Environment(\.dismiss) private var dismiss
@@ -25,29 +24,29 @@ struct ClosetDetailView: View {
                     VStack(spacing: 16) {
                         Image(systemName: "hanger")
                             .font(.system(size: 56))
-                            .foregroundColor(.teal.opacity(0.3))
+                            .foregroundColor(.terracotta.opacity(0.3))
                         Text("No outfits yet")
                             .font(.custom("PatrickHand-Regular", size: 26))
-                            .foregroundColor(.primary)
+                            .foregroundColor(.antiqueTeal)
                         Text("Start building your first outfit from your sketched items.")
                             .font(.custom("PatrickHand-Regular", size: 18))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.antiqueTeal.opacity(0.6))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 40)
-                        Button(action: { showOutfitBuilder = true }) {
+                        NavigationLink(destination: OutfitCanvasView(closet: closet)) {
                             Label("Build an Outfit", systemImage: "plus.circle.fill")
                                 .font(.custom("PatrickHand-Regular", size: 20))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 28)
                                 .padding(.vertical, 14)
-                                .background(RoundedRectangle(cornerRadius: 16).fill(Color.teal))
+                                .background(RoundedRectangle(cornerRadius: 16).fill(Color.terracotta))
                         }
                     }
                     .padding(.top, 60)
                 } else {
                     VStack(spacing: 16) {
                         ForEach(sortedOutfits) { outfit in
-                            NavigationLink(destination: OutfitDetailView(outfit: outfit)) {
+                            NavigationLink(destination: OutfitCanvasView(closet: closet, existingOutfit: outfit)) {
                                 OutfitRowCard(outfit: outfit)
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -63,7 +62,7 @@ struct ClosetDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
-                Button(action: { showOutfitBuilder = true }) {
+                NavigationLink(destination: OutfitCanvasView(closet: closet)) {
                     Image(systemName: "plus")
                         .fontWeight(.semibold)
                 }
@@ -75,9 +74,6 @@ struct ClosetDetailView: View {
                         .foregroundColor(.red.opacity(0.8))
                 }
             }
-        }
-        .fullScreenCover(isPresented: $showOutfitBuilder) {
-            OutfitBuilderView(closet: closet)
         }
         .confirmationDialog("Delete \"\(closet.name)\"?", isPresented: $showDeleteClosetConfirm, titleVisibility: .visible) {
             Button("Delete Closet", role: .destructive) {
@@ -95,59 +91,53 @@ struct ClosetDetailView: View {
 
 struct OutfitRowCard: View {
     let outfit: Outfit
+    @State private var thumbnail: UIImage?
 
     var body: some View {
-        HStack(spacing: 16) {
-            // Sketch previews (up to 3)
-            HStack(spacing: -20) {
-                ForEach(outfit.items.prefix(3)) { item in
-                    ZStack {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 52, height: 52)
-                            .shadow(color: .black.opacity(0.08), radius: 3)
-                        if let data = item.sketchData, let uiImage = UIImage(data: data) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 52, height: 52)
-                                .clipShape(Circle())
-                        } else {
-                            Image(systemName: item.category.icon)
-                                .font(.system(size: 20))
-                                .foregroundColor(.teal.opacity(0.6))
-                        }
-                    }
+        HStack(spacing: 14) {
+            // Outfit thumbnail
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.antiqueTeal.opacity(0.15))
+                    .frame(width: 72, height: 72)
+
+                if let image = thumbnail {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 72, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else {
+                    Image(systemName: "hanger")
+                        .font(.system(size: 28))
+                        .foregroundColor(.white.opacity(0.5))
                 }
-                if outfit.items.count > 3 {
-                    ZStack {
-                        Circle()
-                            .fill(Color.teal.opacity(0.15))
-                            .frame(width: 52, height: 52)
-                        Text("+\(outfit.items.count - 3)")
-                            .font(.custom("PatrickHand-Regular", size: 16))
-                            .foregroundColor(.teal)
-                    }
+            }
+            .onAppear {
+                if let data = outfit.thumbnailData, let img = UIImage(data: data) {
+                    thumbnail = img
+                } else {
+                    thumbnail = outfit.renderThumbnail()
                 }
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(outfit.name)
-                    .font(.custom("PatrickHand-Regular", size: 22))
-                    .foregroundColor(.primary)
+                    .font(.custom("PatrickHand-Regular", size: 20))
+                    .foregroundColor(.white)
                 Text("\(outfit.items.count) item\(outfit.items.count == 1 ? "" : "s")")
-                    .font(.custom("PatrickHand-Regular", size: 16))
-                    .foregroundColor(.secondary)
+                    .font(.custom("PatrickHand-Regular", size: 15))
+                    .foregroundColor(.white.opacity(0.65))
             }
 
             Spacer()
 
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundColor(.white.opacity(0.5))
         }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 18).fill(Color.white))
-        .shadow(color: .black.opacity(0.05), radius: 4)
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 18).fill(Color.antiqueTeal))
+        .shadow(color: Color.antiqueTeal.opacity(0.35), radius: 6, x: 0, y: 3)
     }
 }

@@ -7,6 +7,8 @@ final class Outfit {
     var name: String
     var dateCreated: Date
     var notes: String?
+    var placementsData: Data?
+    var thumbnailData: Data?
 
     @Relationship(deleteRule: .nullify, inverse: \Closet.outfits)
     var closet: Closet?

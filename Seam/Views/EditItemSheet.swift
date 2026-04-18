@@ -28,16 +28,16 @@ struct EditItemSheet: View {
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(height: 180)
-                            .background(Color.white)
+                            .background(Color.warmCard)
                             .cornerRadius(16)
-                            .shadow(color: .black.opacity(0.08), radius: 8)
+                            .shadow(color: Color.warmShadow.opacity(0.08), radius: 8)
                     }
 
                     // Name
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Name")
                             .font(.custom("PatrickHand-Regular", size: 16))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.antiqueTeal.opacity(0.6))
                         TextField("Item name", text: $name)
                             .font(.custom("PatrickHand-Regular", size: 20))
                             .padding()
@@ -48,7 +48,7 @@ struct EditItemSheet: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Category")
                             .font(.custom("PatrickHand-Regular", size: 16))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.antiqueTeal.opacity(0.6))
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 90))], spacing: 12) {
                             ForEach(ClothingCategory.allCases, id: \.self) { cat in
                                 CategoryButton(
@@ -64,7 +64,7 @@ struct EditItemSheet: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Notes (Optional)")
                             .font(.custom("PatrickHand-Regular", size: 16))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.antiqueTeal.opacity(0.6))
                         TextField("Add notes...", text: $notes, axis: .vertical)
                             .font(.custom("PatrickHand-Regular", size: 18))
                             .lineLimit(3...6)
@@ -78,7 +78,7 @@ struct EditItemSheet: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(RoundedRectangle(cornerRadius: 16).fill(Color.teal))
+                            .background(RoundedRectangle(cornerRadius: 16).fill(Color.terracotta))
                     }
                     .padding(.bottom, 20)
                 }
