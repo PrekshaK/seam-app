@@ -7,9 +7,7 @@ class CanvasHolder: ObservableObject {
 
     func setup(_ canvas: PKCanvasView) {
         canvasView = canvas
-        toolPicker.setVisible(true, forFirstResponder: canvas)
         toolPicker.addObserver(canvas)
-        canvas.becomeFirstResponder()
     }
 
     func undo() { canvasView?.undoManager?.undo() }
@@ -20,6 +18,12 @@ class CanvasHolder: ObservableObject {
         guard let canvas = canvasView else { return }
         toolPicker.setVisible(true, forFirstResponder: canvas)
         canvas.becomeFirstResponder()
+    }
+
+    func hideTools() {
+        guard let canvas = canvasView else { return }
+        toolPicker.setVisible(false, forFirstResponder: canvas)
+        canvas.resignFirstResponder()
     }
 }
 

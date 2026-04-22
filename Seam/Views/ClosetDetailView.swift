@@ -19,47 +19,48 @@ struct ClosetDetailView: View {
         closet.outfits.sorted { $0.dateCreated > $1.dateCreated }
     }
 
+    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
+
     var body: some View {
         ZStack {
             Color("SoftBackground").ignoresSafeArea()
 
             ScrollView {
-                VStack(spacing: 20) {
-                    if sortedOutfits.isEmpty {
-                        VStack(spacing: 16) {
-                            Image(systemName: "hanger")
-                                .font(.system(size: 56))
-                                .foregroundColor(.terracotta.opacity(0.3))
-                            Text("No outfits yet")
-                                .font(.custom("PatrickHand-Regular", size: 26))
-                                .foregroundColor(.antiqueTeal)
-                            Text("Start building your first outfit from your sketched items.")
-                                .font(.custom("PatrickHand-Regular", size: 18))
-                                .foregroundColor(.antiqueTeal.opacity(0.6))
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 40)
-                            Button(action: { showNewOutfit = true }) {
-                                Label("Build an Outfit", systemImage: "plus.circle.fill")
-                                    .font(.custom("PatrickHand-Regular", size: 20))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 28)
-                                    .padding(.vertical, 14)
-                                    .background(RoundedRectangle(cornerRadius: 16).fill(Color.terracotta))
-                            }
+                if sortedOutfits.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "hanger")
+                            .font(.system(size: 56))
+                            .foregroundColor(.antiqueTeal.opacity(0.3))
+                        Text("No outfits yet")
+                            .font(.custom("PatrickHand-Regular", size: 26))
+                            .foregroundColor(.antiqueTeal)
+                        Text("Start building your first outfit from your sketched items.")
+                            .font(.custom("PatrickHand-Regular", size: 18))
+                            .foregroundColor(.antiqueTeal.opacity(0.6))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                        Button(action: { showNewOutfit = true }) {
+                            Label("Build an Outfit", systemImage: "plus.circle.fill")
+                                .font(.custom("PatrickHand-Regular", size: 20))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 28)
+                                .padding(.vertical, 14)
+                                .background(RoundedRectangle(cornerRadius: 16).fill(Color.terracotta))
                         }
-                        .padding(.top, 60)
-                    } else {
-                        VStack(spacing: 16) {
-                            ForEach(sortedOutfits) { outfit in
-                                Button(action: { editingOutfit = outfit }) {
-                                    OutfitRowCard(outfit: outfit)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
                     }
+                    .padding(.top, 60)
+                } else {
+                    LazyVGrid(columns: columns, spacing: 28) {
+                        ForEach(sortedOutfits) { outfit in
+                            Button(action: { editingOutfit = outfit }) {
+                                OutfitPolaroidCard(outfit: outfit)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 24)
+                    .padding(.bottom, 32)
                 }
             }
         }
@@ -70,6 +71,7 @@ struct ClosetDetailView: View {
                 Button(action: { showNewOutfit = true }) {
                     Image(systemName: "plus")
                         .fontWeight(.semibold)
+                        .foregroundColor(.terracotta)
                 }
 
                 Button(role: .destructive) {
@@ -98,57 +100,55 @@ struct ClosetDetailView: View {
     }
 }
 
-// MARK: - Outfit Row Card
+// MARK: - Polaroid Card
 
-struct OutfitRowCard: View {
+struct OutfitPolaroidCard: View {
     let outfit: Outfit
     @State private var thumbnail: UIImage?
 
     var body: some View {
-        HStack(spacing: 14) {
-            // Outfit thumbnail
+        VStack(spacing: 0) {
+            // Photo area
             ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.antiqueTeal.opacity(0.15))
-                    .frame(width: 72, height: 72)
+                Color.paperBeige
 
                 if let image = thumbnail {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: 72, height: 72)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipped()
                 } else {
                     Image(systemName: "hanger")
-                        .font(.system(size: 28))
-                        .foregroundColor(.white.opacity(0.5))
+                        .font(.system(size: 36))
+                        .foregroundColor(.antiqueTeal.opacity(0.25))
                 }
             }
-            .onAppear {
-                if let data = outfit.thumbnailData, let img = UIImage(data: data) {
-                    thumbnail = img
-                } else {
-                    thumbnail = outfit.renderThumbnail()
-                }
-            }
+            .aspectRatio(1, contentMode: .fit)
 
-            VStack(alignment: .leading, spacing: 4) {
+            // Label strip
+            VStack(spacing: 3) {
                 Text(outfit.name)
-                    .font(.custom("PatrickHand-Regular", size: 20))
+                    .font(.custom("PatrickHand-Regular", size: 16))
                     .foregroundColor(.white)
+                    .lineLimit(1)
                 Text("\(outfit.items.count) item\(outfit.items.count == 1 ? "" : "s")")
-                    .font(.custom("PatrickHand-Regular", size: 15))
-                    .foregroundColor(.white.opacity(0.65))
+                    .font(.custom("PatrickHand-Regular", size: 12))
+                    .foregroundColor(.white.opacity(0.7))
             }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.white.opacity(0.5))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(Color.terracotta.opacity(0.72))
         }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 18).fill(Color.antiqueTeal))
-        .shadow(color: Color.antiqueTeal.opacity(0.35), radius: 6, x: 0, y: 3)
+        .clipShape(RoundedRectangle(cornerRadius: 2))
+        .shadow(color: Color.warmShadow.opacity(0.18), radius: 8, x: 0, y: 4)
+        .padding(.vertical, 6)
+        .onAppear {
+            if let data = outfit.thumbnailData, let img = UIImage(data: data) {
+                thumbnail = img
+            } else {
+                thumbnail = outfit.renderThumbnail()
+            }
+        }
     }
 }

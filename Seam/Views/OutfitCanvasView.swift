@@ -58,7 +58,7 @@ struct OutfitCanvasView: View {
             Button(action: { dismiss() }) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.antiqueTeal)
+                    .foregroundColor(.terracotta)
                     .frame(width: 36, height: 36)
             }
 
@@ -137,7 +137,7 @@ struct OutfitCanvasView: View {
                 .foregroundColor(.white)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
-                .background(RoundedRectangle(cornerRadius: 14).fill(Color.antiqueTeal))
+                .background(RoundedRectangle(cornerRadius: 14).fill(Color.terracotta))
             }
         }
         .padding(.horizontal, 20)
@@ -379,7 +379,7 @@ struct ItemPickerSheet: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
                         .font(.custom("PatrickHand-Regular", size: 18))
-                        .foregroundColor(.antiqueTeal)
+                        .foregroundColor(.terracotta)
                 }
             }
         }

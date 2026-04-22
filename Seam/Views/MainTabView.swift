@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @State private var selectedTab = 0
+    @State private var sketchEditingItem: ClothingItem? = nil
 
     init() {
         let teal = UIColor(red: 0.176, green: 0.357, blue: 0.341, alpha: 1.0)
@@ -26,10 +27,19 @@ struct MainTabView: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                ItemsView()
-                    .opacity(selectedTab == 0 ? 1 : 0)
+                ItemsView(
+                    onSketchNew: { sketchEditingItem = nil; selectedTab = 1 },
+                    onSketchEdit: { item in sketchEditingItem = item; selectedTab = 1 }
+                )
+                .opacity(selectedTab == 0 ? 1 : 0)
+                DrawView(
+                    editingItem: sketchEditingItem,
+                    isActive: selectedTab == 1,
+                    onClose: { sketchEditingItem = nil; selectedTab = 0 }
+                )
+                .opacity(selectedTab == 1 ? 1 : 0)
                 ClosetsView()
-                    .opacity(selectedTab == 1 ? 1 : 0)
+                    .opacity(selectedTab == 2 ? 1 : 0)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -39,7 +49,8 @@ struct MainTabView: View {
 
             HStack(spacing: 0) {
                 tabButton(icon: "tshirt.fill", label: "Items", tag: 0)
-                tabButton(icon: "cabinet.fill", label: "Closets", tag: 1)
+                sketchButton
+                tabButton(icon: "cabinet.fill", label: "Closets", tag: 2)
             }
             .frame(height: 56)
             .background(Color("SoftBackground"))
@@ -57,6 +68,19 @@ struct MainTabView: View {
                     .font(.custom("PatrickHand-Regular", size: 13))
             }
             .foregroundColor(selectedTab == tag ? .terracotta : .antiqueTeal.opacity(0.4))
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var sketchButton: some View {
+        Button(action: { selectedTab = 1 }) {
+            VStack(spacing: 4) {
+                Image(systemName: "pencil")
+                    .font(.system(size: 22))
+                Text("Sketch")
+                    .font(.custom("PatrickHand-Regular", size: 13))
+            }
+            .foregroundColor(selectedTab == 1 ? .terracotta : .antiqueTeal.opacity(0.4))
             .frame(maxWidth: .infinity)
         }
     }

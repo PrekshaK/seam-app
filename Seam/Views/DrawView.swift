@@ -3,8 +3,10 @@ import PencilKit
 
 struct DrawView: View {
     var editingItem: ClothingItem? = nil
+    var isActive: Bool = true
+    var onClose: (() -> Void)? = nil
 
-    @State private var drawing: PKDrawing
+    @State private var drawing = PKDrawing()
     @StateObject private var canvasHolder = CanvasHolder()
     @State private var canvasSize: CGSize = .zero
     @State private var showSaveSheet = false
@@ -12,23 +14,26 @@ struct DrawView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    init(editingItem: ClothingItem? = nil) {
-        self.editingItem = editingItem
+    private var isEditMode: Bool { editingItem != nil }
+
+    private func close() {
+        if let onClose { onClose() } else { dismiss() }
+    }
+
+    private func loadDrawing() {
         if let item = editingItem,
            let data = item.drawingData,
            let loaded = try? PKDrawing(data: data) {
-            _drawing = State(initialValue: loaded)
+            drawing = loaded
         } else {
-            _drawing = State(initialValue: PKDrawing())
+            drawing = PKDrawing()
         }
     }
-
-    private var isEditMode: Bool { editingItem != nil }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: { dismiss() }) {
+                Button(action: { close() }) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 18, weight: .medium))
                         .foregroundColor(.antiqueTeal)
@@ -98,8 +103,19 @@ struct DrawView: View {
         .background(Color("SoftBackground").ignoresSafeArea())
         .navigationBarHidden(true)
         .onAppear {
-            if !isEditMode { drawing = PKDrawing() }
-            canvasHolder.showTools()
+            loadDrawing()
+            if isActive { canvasHolder.showTools() }
+        }
+        .onChange(of: isActive) { _, active in
+            if active {
+                loadDrawing()
+                canvasHolder.showTools()
+            } else {
+                canvasHolder.hideTools()
+            }
+        }
+        .onChange(of: editingItem?.id) { _, _ in
+            loadDrawing()
         }
         .sheet(isPresented: $showSaveSheet) {
             SaveSketchSheet(
@@ -107,7 +123,7 @@ struct DrawView: View {
                 canvasSize: canvasSize,
                 onSave: { _ in
                     drawing = PKDrawing()
-                    dismiss()
+                    close()
                 }
             )
         }
@@ -117,7 +133,7 @@ struct DrawView: View {
         if isEditMode {
             saveEditedSketch()
         } else {
-            if !drawing.strokes.isEmpty { showSaveSheet = true } else { dismiss() }
+            if !drawing.strokes.isEmpty { showSaveSheet = true } else { close() }
         }
     }
 
@@ -127,6 +143,6 @@ struct DrawView: View {
         item.sketchData = sketchImage.pngData()
         item.drawingData = drawing.dataRepresentation()
         try? modelContext.save()
-        dismiss()
+        close()
     }
 }

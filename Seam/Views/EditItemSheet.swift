@@ -3,17 +3,18 @@ import SwiftData
 
 struct ItemDetailView: View {
     let item: ClothingItem
+    var onSketchEdit: (ClothingItem) -> Void = { _ in }
 
     @State private var name: String
     @State private var category: ClothingCategory
     @State private var notes: String
     @State private var saved = false
-    @State private var showEditSketch = false
 
     @Environment(\.modelContext) private var modelContext
 
-    init(item: ClothingItem) {
+    init(item: ClothingItem, onSketchEdit: @escaping (ClothingItem) -> Void = { _ in }) {
         self.item = item
+        self.onSketchEdit = onSketchEdit
         _name = State(initialValue: item.name)
         _category = State(initialValue: item.category)
         _notes = State(initialValue: item.notes ?? "")
@@ -36,17 +37,17 @@ struct ItemDetailView: View {
                                 .cornerRadius(20)
                                 .shadow(color: Color.warmShadow.opacity(0.08), radius: 10)
 
-                            Button(action: { showEditSketch = true }) {
+                            Button(action: { onSketchEdit(item) }) {
                                 HStack(spacing: 5) {
                                     Image(systemName: "pencil")
                                         .font(.system(size: 13, weight: .medium))
-                                    Text("Edit Sketch")
+                                    Text("Edit")
                                         .font(.custom("PatrickHand-Regular", size: 15))
                                 }
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
-                                .background(Capsule().fill(Color.antiqueTeal.opacity(0.85)))
+                                .background(Capsule().fill(Color.terracotta.opacity(0.85)))
                             }
                             .padding(12)
                         }
@@ -112,9 +113,6 @@ struct ItemDetailView: View {
         }
         .navigationTitle(item.name.isEmpty ? item.category.rawValue : item.name)
         .navigationBarTitleDisplayMode(.inline)
-        .fullScreenCover(isPresented: $showEditSketch) {
-            DrawView(editingItem: item)
-        }
         .onChange(of: item) { _, newItem in
             name = newItem.name
             category = newItem.category

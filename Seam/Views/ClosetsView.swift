@@ -20,11 +20,11 @@ struct ClosetsView: View {
                 } else {
                     List(selection: $selectedCloset) {
                         ForEach(closets) { closet in
-                            ClosetSidebarRow(closet: closet)
+                            ClosetSidebarRow(closet: closet, isSelected: selectedCloset == closet)
                                 .tag(closet)
-                                .listRowBackground(Color("SoftBackground"))
+                                .listRowBackground(selectedCloset == closet ? Color.antiqueTeal.opacity(0.08) : Color("SoftBackground"))
                                 .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 16))
                         }
                     }
                     .listStyle(.plain)
@@ -75,17 +75,17 @@ struct ClosetsView: View {
             VStack(spacing: 16) {
                 Image(systemName: "plus.circle")
                     .font(.system(size: 40))
-                    .foregroundColor(.terracotta.opacity(0.6))
+                    .foregroundColor(.antiqueTeal.opacity(0.6))
                 Text("Create your first closet")
                     .font(.custom("PatrickHand-Regular", size: 22))
-                    .foregroundColor(.terracotta)
+                    .foregroundColor(.antiqueTeal)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 60)
             .background(
                 RoundedRectangle(cornerRadius: 20)
                     .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
-                    .foregroundColor(.terracotta.opacity(0.4))
+                    .foregroundColor(.antiqueTeal.opacity(0.4))
             )
             .padding(.horizontal, 32)
         }
@@ -96,31 +96,40 @@ struct ClosetsView: View {
 
 struct ClosetSidebarRow: View {
     let closet: Closet
+    var isSelected: Bool = false
 
     var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.antiqueTeal)
-                    .frame(width: 48, height: 48)
-                    .shadow(color: Color.antiqueTeal.opacity(0.3), radius: 4, x: 0, y: 2)
-                Image(systemName: closet.icon)
-                    .font(.system(size: 22))
-                    .foregroundColor(.white.opacity(0.9))
-            }
+        HStack(spacing: 0) {
+            Rectangle()
+                .fill(isSelected ? Color.antiqueTeal : Color.clear)
+                .frame(width: 3)
+                .cornerRadius(1.5)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(closet.name)
-                    .font(.custom("PatrickHand-Regular", size: 20))
-                    .foregroundColor(.antiqueTeal)
-                Text("\(closet.outfits.count) outfit\(closet.outfits.count == 1 ? "" : "s")")
-                    .font(.custom("PatrickHand-Regular", size: 14))
-                    .foregroundColor(.antiqueTeal.opacity(0.55))
-            }
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.antiqueTeal)
+                        .frame(width: 48, height: 48)
+                        .shadow(color: Color.antiqueTeal.opacity(0.3), radius: 4, x: 0, y: 2)
+                    Image(systemName: closet.icon)
+                        .font(.system(size: 22))
+                        .foregroundColor(.white.opacity(0.9))
+                }
 
-            Spacer()
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(closet.name)
+                        .font(.custom("PatrickHand-Regular", size: 20))
+                        .foregroundColor(.antiqueTeal)
+                    Text("\(closet.outfits.count) outfit\(closet.outfits.count == 1 ? "" : "s")")
+                        .font(.custom("PatrickHand-Regular", size: 14))
+                        .foregroundColor(.antiqueTeal.opacity(0.55))
+                }
+
+                Spacer()
+            }
+            .padding(.leading, 13)
+            .padding(.vertical, 6)
         }
-        .padding(.vertical, 6)
         .contentShape(Rectangle())
     }
 }
