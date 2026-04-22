@@ -321,8 +321,7 @@ struct DraggableCanvasItem: View {
         } else {
             ZStack {
                 RoundedRectangle(cornerRadius: 8).fill(Color.warmCard)
-                Image(systemName: item.category.icon)
-                    .font(.system(size: 32))
+                CategoryIcon(category: item.category, size: 32)
                     .foregroundColor(.terracotta.opacity(0.5))
             }
         }

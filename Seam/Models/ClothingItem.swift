@@ -7,6 +7,7 @@ final class ClothingItem {
     var name: String
     var category: ClothingCategory
     var sketchData: Data?
+    var drawingData: Data?
     var color: String?
     var season: Season?
     var isFavorite: Bool
@@ -22,6 +23,7 @@ final class ClothingItem {
         name: String = "",
         category: ClothingCategory = .top,
         sketchData: Data? = nil,
+        drawingData: Data? = nil,
         color: String? = nil,
         season: Season? = nil,
         isFavorite: Bool = false,
@@ -34,6 +36,7 @@ final class ClothingItem {
         self.name = name
         self.category = category
         self.sketchData = sketchData
+        self.drawingData = drawingData
         self.color = color
         self.season = season
         self.isFavorite = isFavorite
@@ -55,15 +58,26 @@ enum ClothingCategory: String, Codable, CaseIterable {
     case accessories = "Accessories"
     case other = "Other"
 
-    var icon: String {
+    // SF Symbol name — nil means use a custom asset instead
+    var sfSymbol: String? {
         switch self {
         case .top: return "tshirt.fill"
-        case .bottom: return "rectangle.fill"
-        case .dress: return "figure.dress.line.vertical.figure"
+        case .bottom: return nil
+        case .dress: return nil
         case .outerwear: return "jacket.fill"
         case .shoes: return "shoe.fill"
-        case .accessories: return "bag.fill"
+        case .accessories: return nil
         case .other: return "tag.fill"
+        }
+    }
+
+    // Custom asset name — only set for noun project icons
+    var customAsset: String? {
+        switch self {
+        case .bottom: return "noun-skirt"
+        case .dress: return "noun-dress"
+        case .accessories: return "noun-necklace"
+        default: return nil
         }
     }
 }

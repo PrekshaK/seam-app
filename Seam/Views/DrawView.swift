@@ -2,12 +2,28 @@ import SwiftUI
 import PencilKit
 
 struct DrawView: View {
-    @State private var drawing = PKDrawing()
+    var editingItem: ClothingItem? = nil
+
+    @State private var drawing: PKDrawing
     @StateObject private var canvasHolder = CanvasHolder()
     @State private var canvasSize: CGSize = .zero
     @State private var showSaveSheet = false
 
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    init(editingItem: ClothingItem? = nil) {
+        self.editingItem = editingItem
+        if let item = editingItem,
+           let data = item.drawingData,
+           let loaded = try? PKDrawing(data: data) {
+            _drawing = State(initialValue: loaded)
+        } else {
+            _drawing = State(initialValue: PKDrawing())
+        }
+    }
+
+    private var isEditMode: Bool { editingItem != nil }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,7 +37,7 @@ struct DrawView: View {
 
                 Spacer()
 
-                Text("Sketch Item")
+                Text(isEditMode ? "Edit Sketch" : "Sketch Item")
                     .font(.custom("PatrickHand-Regular", size: 18))
                     .foregroundColor(.antiqueTeal)
 
@@ -55,9 +71,7 @@ struct DrawView: View {
                     .disabled(drawing.strokes.isEmpty)
                     .opacity(drawing.strokes.isEmpty ? 0.3 : 1.0)
 
-                    Button(action: {
-                        if !drawing.strokes.isEmpty { showSaveSheet = true } else { dismiss() }
-                    }) {
+                    Button(action: handleCheckmark) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 26))
                             .foregroundColor(.terracotta)
@@ -84,7 +98,7 @@ struct DrawView: View {
         .background(Color("SoftBackground").ignoresSafeArea())
         .navigationBarHidden(true)
         .onAppear {
-            drawing = PKDrawing()
+            if !isEditMode { drawing = PKDrawing() }
             canvasHolder.showTools()
         }
         .sheet(isPresented: $showSaveSheet) {
@@ -97,5 +111,22 @@ struct DrawView: View {
                 }
             )
         }
+    }
+
+    private func handleCheckmark() {
+        if isEditMode {
+            saveEditedSketch()
+        } else {
+            if !drawing.strokes.isEmpty { showSaveSheet = true } else { dismiss() }
+        }
+    }
+
+    private func saveEditedSketch() {
+        guard let item = editingItem else { return }
+        let sketchImage = drawing.transparentCropped(canvasSize: canvasSize)
+        item.sketchData = sketchImage.pngData()
+        item.drawingData = drawing.dataRepresentation()
+        try? modelContext.save()
+        dismiss()
     }
 }

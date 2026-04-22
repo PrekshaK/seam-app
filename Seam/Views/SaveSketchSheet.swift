@@ -102,7 +102,8 @@ struct SaveSketchSheet: View {
         let item = ClothingItem(
             name: itemName.isEmpty ? "Untitled" : itemName,
             category: selectedCategory,
-            sketchData: sketchImage.pngData()
+            sketchData: sketchImage.pngData(),
+            drawingData: drawing.dataRepresentation()
         )
         modelContext.insert(item)
         try? modelContext.save()
@@ -124,7 +125,7 @@ struct CategoryButton: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
-                Image(systemName: category.icon).font(.system(size: 22))
+                CategoryIcon(category: category, size: 22)
                 Text(category.rawValue).font(.custom("PatrickHand-Regular", size: 14))
             }
             .foregroundColor(isSelected ? .white : .primary)

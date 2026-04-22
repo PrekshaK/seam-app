@@ -5,30 +5,30 @@ struct ClosetsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Closet.dateCreated) private var closets: [Closet]
     @State private var showCreateCloset = false
+    @State private var selectedCloset: Closet?
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     private var closetService: ClosetService { ClosetService(modelContext: modelContext) }
 
     var body: some View {
-        NavigationStack {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             ZStack {
                 Color("SoftBackground").ignoresSafeArea()
 
                 if closets.isEmpty {
                     emptyState
                 } else {
-                    ScrollView {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                            ForEach(closets) { closet in
-                                NavigationLink(destination: ClosetDetailView(closet: closet)) {
-                                    ClosetCard(closet: closet)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                            }
+                    List(selection: $selectedCloset) {
+                        ForEach(closets) { closet in
+                            ClosetSidebarRow(closet: closet)
+                                .tag(closet)
+                                .listRowBackground(Color("SoftBackground"))
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                        .padding(.bottom, 24)
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
             }
             .navigationTitle("Closets")
@@ -45,7 +45,29 @@ struct ClosetsView: View {
             .sheet(isPresented: $showCreateCloset) {
                 CreateClosetSheet(closetService: closetService)
             }
+            .onChange(of: closets) { _, newClosets in
+                if let sel = selectedCloset, !newClosets.contains(sel) {
+                    selectedCloset = nil
+                }
+            }
+        } detail: {
+            if let closet = selectedCloset {
+                ClosetDetailView(closet: closet)
+            } else {
+                ZStack {
+                    Color("SoftBackground").ignoresSafeArea()
+                    VStack(spacing: 14) {
+                        Image(systemName: "cabinet")
+                            .font(.system(size: 52))
+                            .foregroundColor(.antiqueTeal.opacity(0.2))
+                        Text("Select a closet")
+                            .font(.custom("PatrickHand-Regular", size: 22))
+                            .foregroundColor(.antiqueTeal.opacity(0.4))
+                    }
+                }
+            }
         }
+        .navigationSplitViewStyle(.balanced)
     }
 
     private var emptyState: some View {
@@ -70,7 +92,40 @@ struct ClosetsView: View {
     }
 }
 
-// MARK: - Closet Card
+// MARK: - Sidebar Row
+
+struct ClosetSidebarRow: View {
+    let closet: Closet
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.antiqueTeal)
+                    .frame(width: 48, height: 48)
+                    .shadow(color: Color.antiqueTeal.opacity(0.3), radius: 4, x: 0, y: 2)
+                Image(systemName: closet.icon)
+                    .font(.system(size: 22))
+                    .foregroundColor(.white.opacity(0.9))
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(closet.name)
+                    .font(.custom("PatrickHand-Regular", size: 20))
+                    .foregroundColor(.antiqueTeal)
+                Text("\(closet.outfits.count) outfit\(closet.outfits.count == 1 ? "" : "s")")
+                    .font(.custom("PatrickHand-Regular", size: 14))
+                    .foregroundColor(.antiqueTeal.opacity(0.55))
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Closet Card (kept for any other uses)
 
 struct ClosetCard: View {
     let closet: Closet

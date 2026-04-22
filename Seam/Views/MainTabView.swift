@@ -1,17 +1,11 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @State private var selectedTab = 0
+
     init() {
         let teal = UIColor(red: 0.176, green: 0.357, blue: 0.341, alpha: 1.0)
         let bg = UIColor(named: "SoftBackground") ?? UIColor.systemBackground
-
-        let tabAppearance = UITabBarAppearance()
-        tabAppearance.configureWithOpaqueBackground()
-        tabAppearance.backgroundColor = bg
-        UITabBar.appearance().standardAppearance = tabAppearance
-        if #available(iOS 15.0, *) {
-            UITabBar.appearance().scrollEdgeAppearance = tabAppearance
-        }
 
         let navAppearance = UINavigationBarAppearance()
         navAppearance.configureWithOpaqueBackground()
@@ -30,20 +24,41 @@ struct MainTabView: View {
     }
 
     var body: some View {
-        TabView {
-            ItemsView()
-                .tabItem {
-                    Image(systemName: "tshirt.fill")
-                    Text("Items")
-                }
+        VStack(spacing: 0) {
+            ZStack {
+                ItemsView()
+                    .opacity(selectedTab == 0 ? 1 : 0)
+                ClosetsView()
+                    .opacity(selectedTab == 1 ? 1 : 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            ClosetsView()
-                .tabItem {
-                    Image(systemName: "cabinet.fill")
-                    Text("Closets")
-                }
+            Rectangle()
+                .fill(Color.antiqueTeal.opacity(0.12))
+                .frame(height: 1)
+
+            HStack(spacing: 0) {
+                tabButton(icon: "tshirt.fill", label: "Items", tag: 0)
+                tabButton(icon: "cabinet.fill", label: "Closets", tag: 1)
+            }
+            .frame(height: 56)
+            .background(Color("SoftBackground"))
+            .padding(.bottom, 8)
         }
-        .tint(.terracotta)
+        .ignoresSafeArea(edges: .bottom)
+    }
+
+    private func tabButton(icon: String, label: String, tag: Int) -> some View {
+        Button(action: { selectedTab = tag }) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 22))
+                Text(label)
+                    .font(.custom("PatrickHand-Regular", size: 13))
+            }
+            .foregroundColor(selectedTab == tag ? .terracotta : .antiqueTeal.opacity(0.4))
+            .frame(maxWidth: .infinity)
+        }
     }
 }
 

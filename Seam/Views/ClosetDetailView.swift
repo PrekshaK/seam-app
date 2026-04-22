@@ -5,6 +5,8 @@ struct ClosetDetailView: View {
     let closet: Closet
 
     @State private var showDeleteClosetConfirm = false
+    @State private var showNewOutfit = false
+    @State private var editingOutfit: Outfit? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -18,51 +20,54 @@ struct ClosetDetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                if sortedOutfits.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "hanger")
-                            .font(.system(size: 56))
-                            .foregroundColor(.terracotta.opacity(0.3))
-                        Text("No outfits yet")
-                            .font(.custom("PatrickHand-Regular", size: 26))
-                            .foregroundColor(.antiqueTeal)
-                        Text("Start building your first outfit from your sketched items.")
-                            .font(.custom("PatrickHand-Regular", size: 18))
-                            .foregroundColor(.antiqueTeal.opacity(0.6))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                        NavigationLink(destination: OutfitCanvasView(closet: closet)) {
-                            Label("Build an Outfit", systemImage: "plus.circle.fill")
-                                .font(.custom("PatrickHand-Regular", size: 20))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 28)
-                                .padding(.vertical, 14)
-                                .background(RoundedRectangle(cornerRadius: 16).fill(Color.terracotta))
-                        }
-                    }
-                    .padding(.top, 60)
-                } else {
-                    VStack(spacing: 16) {
-                        ForEach(sortedOutfits) { outfit in
-                            NavigationLink(destination: OutfitCanvasView(closet: closet, existingOutfit: outfit)) {
-                                OutfitRowCard(outfit: outfit)
+        ZStack {
+            Color("SoftBackground").ignoresSafeArea()
+
+            ScrollView {
+                VStack(spacing: 20) {
+                    if sortedOutfits.isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: "hanger")
+                                .font(.system(size: 56))
+                                .foregroundColor(.terracotta.opacity(0.3))
+                            Text("No outfits yet")
+                                .font(.custom("PatrickHand-Regular", size: 26))
+                                .foregroundColor(.antiqueTeal)
+                            Text("Start building your first outfit from your sketched items.")
+                                .font(.custom("PatrickHand-Regular", size: 18))
+                                .foregroundColor(.antiqueTeal.opacity(0.6))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                            Button(action: { showNewOutfit = true }) {
+                                Label("Build an Outfit", systemImage: "plus.circle.fill")
+                                    .font(.custom("PatrickHand-Regular", size: 20))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 28)
+                                    .padding(.vertical, 14)
+                                    .background(RoundedRectangle(cornerRadius: 16).fill(Color.terracotta))
                             }
-                            .buttonStyle(PlainButtonStyle())
                         }
+                        .padding(.top, 60)
+                    } else {
+                        VStack(spacing: 16) {
+                            ForEach(sortedOutfits) { outfit in
+                                Button(action: { editingOutfit = outfit }) {
+                                    OutfitRowCard(outfit: outfit)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
                 }
             }
         }
-        .background(Color("SoftBackground").ignoresSafeArea())
         .navigationTitle(closet.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
-                NavigationLink(destination: OutfitCanvasView(closet: closet)) {
+                Button(action: { showNewOutfit = true }) {
                     Image(systemName: "plus")
                         .fontWeight(.semibold)
                 }
@@ -74,6 +79,12 @@ struct ClosetDetailView: View {
                         .foregroundColor(.red.opacity(0.8))
                 }
             }
+        }
+        .fullScreenCover(isPresented: $showNewOutfit) {
+            OutfitCanvasView(closet: closet)
+        }
+        .fullScreenCover(item: $editingOutfit) { outfit in
+            OutfitCanvasView(closet: closet, existingOutfit: outfit)
         }
         .confirmationDialog("Delete \"\(closet.name)\"?", isPresented: $showDeleteClosetConfirm, titleVisibility: .visible) {
             Button("Delete Closet", role: .destructive) {

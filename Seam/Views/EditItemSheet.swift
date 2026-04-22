@@ -1,14 +1,15 @@
 import SwiftUI
 import SwiftData
 
-struct EditItemSheet: View {
+struct ItemDetailView: View {
     let item: ClothingItem
 
     @State private var name: String
     @State private var category: ClothingCategory
     @State private var notes: String
+    @State private var saved = false
+    @State private var showEditSketch = false
 
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
     init(item: ClothingItem) {
@@ -19,18 +20,36 @@ struct EditItemSheet: View {
     }
 
     var body: some View {
-        NavigationView {
+        ZStack {
+            Color("SoftBackground").ignoresSafeArea()
+
             ScrollView {
                 VStack(spacing: 24) {
                     // Sketch preview
                     if let data = item.sketchData, let uiImage = UIImage(data: data) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(height: 180)
-                            .background(Color.warmCard)
-                            .cornerRadius(16)
-                            .shadow(color: Color.warmShadow.opacity(0.08), radius: 8)
+                        ZStack(alignment: .bottomTrailing) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxHeight: 260)
+                                .background(Color.paperBeige)
+                                .cornerRadius(20)
+                                .shadow(color: Color.warmShadow.opacity(0.08), radius: 10)
+
+                            Button(action: { showEditSketch = true }) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 13, weight: .medium))
+                                    Text("Edit Sketch")
+                                        .font(.custom("PatrickHand-Regular", size: 15))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(Color.antiqueTeal.opacity(0.85)))
+                            }
+                            .padding(12)
+                        }
                     }
 
                     // Name
@@ -73,27 +92,34 @@ struct EditItemSheet: View {
                     }
 
                     Button(action: save) {
-                        Text("Save Changes")
-                            .font(.custom("PatrickHand-Regular", size: 22))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(RoundedRectangle(cornerRadius: 16).fill(Color.terracotta))
+                        HStack(spacing: 8) {
+                            Image(systemName: saved ? "checkmark.circle.fill" : "square.and.arrow.down")
+                                .font(.system(size: 18))
+                            Text(saved ? "Saved!" : "Save Changes")
+                                .font(.custom("PatrickHand-Regular", size: 22))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(RoundedRectangle(cornerRadius: 16).fill(saved ? Color.antiqueTeal : Color.terracotta))
+                        .animation(.easeInOut(duration: 0.2), value: saved)
                     }
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
+                .padding(.horizontal, 24)
+                .padding(.top, 24)
             }
-            .background(Color("SoftBackground").ignoresSafeArea())
-            .navigationTitle("Edit Item")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
-                        .font(.custom("PatrickHand-Regular", size: 18))
-                }
-            }
+        }
+        .navigationTitle(item.name.isEmpty ? item.category.rawValue : item.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .fullScreenCover(isPresented: $showEditSketch) {
+            DrawView(editingItem: item)
+        }
+        .onChange(of: item) { _, newItem in
+            name = newItem.name
+            category = newItem.category
+            notes = newItem.notes ?? ""
+            saved = false
         }
     }
 
@@ -102,6 +128,9 @@ struct EditItemSheet: View {
         item.category = category
         item.notes = notes.isEmpty ? nil : notes
         try? modelContext.save()
-        dismiss()
+        saved = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            saved = false
+        }
     }
 }

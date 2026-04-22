@@ -6,106 +6,163 @@ struct ItemsView: View {
     @Query(sort: \ClothingItem.dateAdded, order: .reverse) private var allItems: [ClothingItem]
     @State private var selectedItem: ClothingItem?
     @State private var showDrawView = false
-    @State private var isExpanded = true
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     private var closetService: ClosetService { ClosetService(modelContext: modelContext) }
-    private let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
 
     var body: some View {
-        NavigationStack {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             ZStack {
                 Color("SoftBackground").ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    // Fixed add button
-                    Button(action: { showDrawView = true }) {
-                        VStack(spacing: 6) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 32, weight: .light))
-                                .foregroundColor(.terracotta)
-                            Text("Sketch new item")
-                                .font(.custom("PatrickHand-Regular", size: 16))
-                                .foregroundColor(.terracotta.opacity(0.8))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18)
-                                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
-                                .foregroundColor(.terracotta.opacity(0.35))
-                        )
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
-
-                    // Scrollable items section
-                    ScrollView {
-                        if !allItems.isEmpty {
-                            VStack(spacing: 0) {
-                                // Header
-                                Button(action: { withAnimation(.easeInOut(duration: 0.25)) { isExpanded.toggle() } }) {
-                                    HStack {
-                                        Text("All Items")
-                                            .font(.custom("PatrickHand-Regular", size: 22))
-                                            .foregroundColor(.antiqueTeal)
-                                        Text("(\(allItems.count))")
-                                            .font(.custom("PatrickHand-Regular", size: 18))
-                                            .foregroundColor(.antiqueTeal.opacity(0.6))
-                                        Spacer()
-                                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.antiqueTeal.opacity(0.6))
+                if allItems.isEmpty {
+                    emptyState
+                } else {
+                    List(selection: $selectedItem) {
+                        ForEach(allItems) { item in
+                            ItemSidebarRow(item: item)
+                                .tag(item)
+                                .listRowBackground(Color("SoftBackground"))
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        if selectedItem == item { selectedItem = nil }
+                                        closetService.deleteItem(item)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
                                     }
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 12)
                                 }
-
-                                if isExpanded {
-                                    LazyVGrid(columns: columns, spacing: 16) {
-                                        ForEach(allItems) { item in
-                                            ClothingItemCard(item: item)
-                                                .onTapGesture { selectedItem = item }
-                                                .contextMenu {
-                                                    Button {
-                                                        closetService.toggleFavorite(item)
-                                                    } label: {
-                                                        Label(
-                                                            item.isFavorite ? "Unfavorite" : "Favorite",
-                                                            systemImage: item.isFavorite ? "heart.slash" : "heart"
-                                                        )
-                                                    }
-                                                    Button(role: .destructive) {
-                                                        closetService.deleteItem(item)
-                                                    } label: {
-                                                        Label("Delete", systemImage: "trash")
-                                                    }
-                                                }
-                                        }
+                                .swipeActions(edge: .leading) {
+                                    Button {
+                                        closetService.toggleFavorite(item)
+                                    } label: {
+                                        Label(
+                                            item.isFavorite ? "Unfavorite" : "Favorite",
+                                            systemImage: item.isFavorite ? "heart.slash" : "heart"
+                                        )
                                     }
-                                    .padding(.horizontal, 20)
-                                    .padding(.bottom, 24)
-                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                                    .tint(.pink)
                                 }
-                            }
                         }
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
-                .frame(maxHeight: .infinity)
             }
             .navigationTitle("Items")
             .navigationBarTitleDisplayMode(.inline)
-            .sheet(item: $selectedItem) { item in
-                EditItemSheet(item: item)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showDrawView = true }) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.terracotta)
+                    }
+                }
             }
             .fullScreenCover(isPresented: $showDrawView) {
                 DrawView()
             }
+            .onChange(of: allItems) { _, newItems in
+                if let sel = selectedItem, !newItems.contains(sel) {
+                    selectedItem = nil
+                }
+            }
+        } detail: {
+            if let item = selectedItem {
+                ItemDetailView(item: item)
+            } else {
+                ZStack {
+                    Color("SoftBackground").ignoresSafeArea()
+                    VStack(spacing: 14) {
+                        Image(systemName: "tshirt")
+                            .font(.system(size: 52))
+                            .foregroundColor(.antiqueTeal.opacity(0.2))
+                        Text("Select an item to edit")
+                            .font(.custom("PatrickHand-Regular", size: 22))
+                            .foregroundColor(.antiqueTeal.opacity(0.4))
+                    }
+                }
+            }
         }
+        .navigationSplitViewStyle(.balanced)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "tshirt")
+                .font(.system(size: 48))
+                .foregroundColor(.terracotta.opacity(0.3))
+            Text("No items yet")
+                .font(.custom("PatrickHand-Regular", size: 22))
+                .foregroundColor(.antiqueTeal)
+            Button(action: { showDrawView = true }) {
+                Label("Sketch your first item", systemImage: "plus.circle.fill")
+                    .font(.custom("PatrickHand-Regular", size: 18))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: 14).fill(Color.terracotta))
+            }
+        }
+        .padding(.horizontal, 40)
     }
 }
 
-// MARK: - Clothing Item Card
+// MARK: - Item Sidebar Row
+
+struct ItemSidebarRow: View {
+    let item: ClothingItem
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.paperBeige)
+                    .frame(width: 48, height: 48)
+                    .shadow(color: Color.warmShadow.opacity(0.06), radius: 3)
+
+                if let data = item.sketchData, let uiImage = UIImage(data: data) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 48, height: 48)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                } else {
+                    CategoryIcon(category: item.category, size: 22)
+                        .foregroundColor(.terracotta.opacity(0.5))
+                }
+
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(Color.antiqueTeal, lineWidth: 2)
+                    .frame(width: 48, height: 48)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 5) {
+                    Text(item.name.isEmpty ? item.category.rawValue : item.name)
+                        .font(.custom("PatrickHand-Regular", size: 19))
+                        .foregroundColor(.antiqueTeal)
+                    if item.isFavorite {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.pink)
+                    }
+                }
+                Text(item.category.rawValue)
+                    .font(.custom("PatrickHand-Regular", size: 14))
+                    .foregroundColor(.antiqueTeal.opacity(0.55))
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 5)
+        .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Clothing Item Card (used in outfit picker)
 
 struct ClothingItemCard: View {
     let item: ClothingItem
@@ -114,7 +171,7 @@ struct ClothingItemCard: View {
         VStack(spacing: 6) {
             ZStack {
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.warmCard)
+                    .fill(Color.paperBeige)
                     .shadow(color: Color.warmShadow.opacity(0.06), radius: 4)
                     .frame(width: 100, height: 100)
 
@@ -125,8 +182,7 @@ struct ClothingItemCard: View {
                         .frame(width: 100, height: 100)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                 } else {
-                    Image(systemName: item.category.icon)
-                        .font(.system(size: 36))
+                    CategoryIcon(category: item.category, size: 36)
                         .foregroundColor(.terracotta.opacity(0.5))
                 }
 
