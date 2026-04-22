@@ -13,24 +13,28 @@ struct CanvasItemState: Identifiable {
 // MARK: - Outfit Canvas
 
 struct OutfitCanvasView: View {
-    let closet: Closet
     var existingOutfit: Outfit?
+    var targetFolder: OutfitFolder?
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \ClothingItem.dateAdded, order: .reverse) private var allItems: [ClothingItem]
+    @Query(sort: \OutfitFolder.dateCreated) private var allFolders: [OutfitFolder]
 
     @State private var outfitName: String
+    @State private var selectedFolder: OutfitFolder?
     @State private var canvasItems: [CanvasItemState] = []
     @State private var showItemPicker = false
     @State private var canvasSize: CGSize = .zero
     @State private var activeItemId: UUID? = nil
     @State private var didLoadPlacements = false
+    @State private var showCreateFolder = false
 
-    init(closet: Closet, existingOutfit: Outfit? = nil) {
-        self.closet = closet
+    init(existingOutfit: Outfit? = nil, targetFolder: OutfitFolder? = nil) {
         self.existingOutfit = existingOutfit
+        self.targetFolder = targetFolder
         _outfitName = State(initialValue: existingOutfit?.name ?? "")
+        _selectedFolder = State(initialValue: existingOutfit?.folder ?? targetFolder)
     }
 
     var body: some View {
@@ -54,32 +58,84 @@ struct OutfitCanvasView: View {
     // MARK: Top bar
 
     private var topBar: some View {
-        HStack {
-            Button(action: { dismiss() }) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.terracotta)
-                    .frame(width: 36, height: 36)
+        VStack(spacing: 4) {
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.terracotta)
+                        .frame(width: 36, height: 36)
+                }
+
+                Spacer()
+
+                TextField("Outfit name", text: $outfitName)
+                    .font(.custom("PatrickHand-Regular", size: 18))
+                    .foregroundColor(.antiqueTeal)
+                    .multilineTextAlignment(.center)
+
+                Spacer()
+
+                Button(action: save) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundColor(.terracotta)
+                }
             }
 
-            Spacer()
-
-            TextField("Outfit name", text: $outfitName)
-                .font(.custom("PatrickHand-Regular", size: 18))
-                .foregroundColor(.antiqueTeal)
-                .multilineTextAlignment(.center)
-
-            Spacer()
-
-            Button(action: save) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 26))
-                    .foregroundColor(.terracotta)
-            }
+            folderPicker
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 10)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
         .background(Color("SoftBackground"))
+        .sheet(isPresented: $showCreateFolder) {
+            CreateOutfitFolderSheet { name, icon in
+                let folder = OutfitFolder(name: name, icon: icon)
+                modelContext.insert(folder)
+                try? modelContext.save()
+                selectedFolder = folder
+            }
+        }
+    }
+
+    private var folderPicker: some View {
+        Menu {
+            Button {
+                selectedFolder = nil
+            } label: {
+                Label("No folder", systemImage: selectedFolder == nil ? "checkmark" : "")
+            }
+            if !allFolders.isEmpty {
+                Divider()
+                ForEach(allFolders) { folder in
+                    Button {
+                        selectedFolder = folder
+                    } label: {
+                        Label(folder.name, systemImage: selectedFolder?.id == folder.id ? "checkmark" : folder.icon)
+                    }
+                }
+            }
+            Divider()
+            Button {
+                showCreateFolder = true
+            } label: {
+                Label("New folder…", systemImage: "folder.badge.plus")
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: selectedFolder == nil ? "folder" : selectedFolder!.icon)
+                    .font(.system(size: 12))
+                Text(selectedFolder?.name ?? "No folder")
+                    .font(.custom("PatrickHand-Regular", size: 13))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .foregroundColor(.antiqueTeal.opacity(0.7))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Color.antiqueTeal.opacity(0.08)))
+        }
     }
 
     // MARK: Canvas
@@ -197,13 +253,14 @@ struct OutfitCanvasView: View {
         if let outfit = existingOutfit {
             outfit.name = outfitName.isEmpty ? "Untitled Outfit" : outfitName
             outfit.items = canvasItems.map(\.item)
+            outfit.folder = selectedFolder
             outfit.placementsData = placementsData
             outfit.thumbnailData = generateThumbnail(for: outfit)
         } else {
             let outfit = Outfit(
                 name: outfitName.isEmpty ? "Untitled Outfit" : outfitName,
-                closet: closet,
-                items: canvasItems.map(\.item)
+                items: canvasItems.map(\.item),
+                folder: selectedFolder
             )
             outfit.placementsData = placementsData
             outfit.thumbnailData = generateThumbnail(for: outfit)

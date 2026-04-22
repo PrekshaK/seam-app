@@ -38,22 +38,19 @@ struct MainTabView: View {
                     onClose: { sketchEditingItem = nil; selectedTab = 0 }
                 )
                 .opacity(selectedTab == 1 ? 1 : 0)
-                ClosetsView()
+                OutfitsView()
                     .opacity(selectedTab == 2 ? 1 : 0)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            Rectangle()
-                .fill(Color.antiqueTeal.opacity(0.12))
-                .frame(height: 1)
-
             HStack(spacing: 0) {
                 tabButton(icon: "tshirt.fill", label: "Items", tag: 0)
                 sketchButton
-                tabButton(icon: "cabinet.fill", label: "Closets", tag: 2)
+                tabButton(icon: "hanger", label: "Outfits", tag: 2)
             }
             .frame(height: 56)
             .background(Color("SoftBackground"))
+            .shadow(color: Color.warmShadow.opacity(0.08), radius: 8, x: 0, y: -2)
             .padding(.bottom, 8)
         }
         .ignoresSafeArea(edges: .bottom)
@@ -67,7 +64,7 @@ struct MainTabView: View {
                 Text(label)
                     .font(.custom("PatrickHand-Regular", size: 13))
             }
-            .foregroundColor(selectedTab == tag ? .terracotta : .antiqueTeal.opacity(0.4))
+            .foregroundColor(selectedTab == tag ? .antiqueTeal : .antiqueTeal.opacity(0.35))
             .frame(maxWidth: .infinity)
         }
     }
@@ -75,14 +72,30 @@ struct MainTabView: View {
     private var sketchButton: some View {
         Button(action: { selectedTab = 1 }) {
             VStack(spacing: 4) {
-                Image(systemName: "pencil")
-                    .font(.system(size: 22))
+                ZStack {
+                    Circle()
+                        .fill(Color.terracotta)
+                        .frame(width: 52, height: 52)
+                        .shadow(color: Color.terracotta.opacity(0.35), radius: 6, x: 0, y: 3)
+                    Image(systemName: "pencil")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundColor(.white)
+                }
                 Text("Sketch")
                     .font(.custom("PatrickHand-Regular", size: 13))
+                    .foregroundColor(selectedTab == 1 ? .terracotta : .antiqueTeal.opacity(0.35))
             }
-            .foregroundColor(selectedTab == 1 ? .terracotta : .antiqueTeal.opacity(0.4))
             .frame(maxWidth: .infinity)
         }
+        .buttonStyle(SketchButtonStyle())
+    }
+}
+
+struct SketchButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.88 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 

@@ -32,7 +32,7 @@ struct LCG {
 }
 
 enum PaperTexture {
-    static let baseColor = UIColor(red: 0.949, green: 0.898, blue: 0.800, alpha: 1.0)
+    static let baseColor = UIColor(red: 0.900, green: 0.850, blue: 0.752, alpha: 1.0)
 
     /// Renders the paper texture into the current graphics context, filling `rect`.
     static func render(in rect: CGRect, context ctx: CGContext) {
@@ -93,13 +93,18 @@ enum PaperTexture {
 }
 
 extension PKDrawing {
-    /// Crops to stroke bounds with padding. Used for preview display (with paper background).
+    /// Crops to stroke bounds with padding, composited onto paper texture using multiply
+    /// blend so the white PencilKit background becomes the paper color.
     func imageOnPaper(canvasSize: CGSize, padding: CGFloat = 32, scale: CGFloat = 2.0) -> UIImage {
         let cropRect = croppedRect(canvasSize: canvasSize, padding: padding)
         let drawingImage = image(from: cropRect, scale: scale)
         let pixelSize = drawingImage.size
         return UIGraphicsImageRenderer(size: pixelSize).image { rendererCtx in
-            PaperTexture.render(in: CGRect(origin: .zero, size: pixelSize), context: rendererCtx.cgContext)
+            let ctx = rendererCtx.cgContext
+            PaperTexture.render(in: CGRect(origin: .zero, size: pixelSize), context: ctx)
+            // Multiply blend: white areas of the drawing become the paper color;
+            // dark strokes remain dark.
+            ctx.setBlendMode(.multiply)
             drawingImage.draw(at: .zero)
         }
     }

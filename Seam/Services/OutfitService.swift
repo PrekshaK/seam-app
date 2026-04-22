@@ -9,9 +9,8 @@ final class OutfitService {
         self.repo = OutfitRepository(modelContext: modelContext)
     }
 
-    func createOutfit(name: String, closet: Closet, items: [ClothingItem]) {
-        let outfit = Outfit(name: name, closet: closet, items: items)
-        closet.outfits.append(outfit)
+    func createOutfit(name: String, items: [ClothingItem]) {
+        let outfit = Outfit(name: name, items: items)
         try? repo.create(outfit)
     }
 

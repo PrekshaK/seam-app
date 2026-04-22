@@ -18,6 +18,9 @@ final class ClothingItem {
     @Relationship(deleteRule: .nullify)
     var outfits: [Outfit]
 
+    @Relationship(deleteRule: .nullify)
+    var closets: [Closet]
+
     init(
         id: UUID = UUID(),
         name: String = "",
@@ -30,7 +33,8 @@ final class ClothingItem {
         dateAdded: Date = Date(),
         lastWorn: Date? = nil,
         notes: String? = nil,
-        outfits: [Outfit] = []
+        outfits: [Outfit] = [],
+        closets: [Closet] = []
     ) {
         self.id = id
         self.name = name
@@ -44,6 +48,7 @@ final class ClothingItem {
         self.lastWorn = lastWorn
         self.notes = notes
         self.outfits = outfits
+        self.closets = closets
     }
 }
 

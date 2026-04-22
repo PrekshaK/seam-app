@@ -22,6 +22,17 @@ final class ClosetService {
         try? closetRepo.delete(closet)
     }
 
+    func addItem(_ item: ClothingItem, to closet: Closet) {
+        guard !closet.items.contains(where: { $0.id == item.id }) else { return }
+        closet.items.append(item)
+        try? itemRepo.save()
+    }
+
+    func removeItem(_ item: ClothingItem, from closet: Closet) {
+        closet.items.removeAll { $0.id == item.id }
+        try? itemRepo.save()
+    }
+
     // MARK: - Clothing Items
 
     func addItem(name: String, category: ClothingCategory, sketchImage: UIImage?) {

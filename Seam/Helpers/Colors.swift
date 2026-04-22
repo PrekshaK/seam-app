@@ -13,6 +13,6 @@ extension Color {
     // Antique deep teal — aged copper patina, pairs with terracotta
     static let antiqueTeal = Color(red: 0.176, green: 0.357, blue: 0.341)
 
-    // Paper beige — matches canvas drawing surface
-    static let paperBeige = Color(red: 0.949, green: 0.898, blue: 0.800)
+    // Paper beige — matches canvas drawing surface (keep in sync with PaperTexture.baseColor)
+    static let paperBeige = Color(red: 0.900, green: 0.850, blue: 0.752)
 }

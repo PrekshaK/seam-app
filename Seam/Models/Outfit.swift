@@ -10,25 +10,25 @@ final class Outfit {
     var placementsData: Data?
     var thumbnailData: Data?
 
-    @Relationship(deleteRule: .nullify, inverse: \Closet.outfits)
-    var closet: Closet?
-
     @Relationship(deleteRule: .nullify, inverse: \ClothingItem.outfits)
     var items: [ClothingItem]
+
+    @Relationship(deleteRule: .nullify)
+    var folder: OutfitFolder?
 
     init(
         id: UUID = UUID(),
         name: String,
         dateCreated: Date = Date(),
         notes: String? = nil,
-        closet: Closet? = nil,
-        items: [ClothingItem] = []
+        items: [ClothingItem] = [],
+        folder: OutfitFolder? = nil
     ) {
         self.id = id
         self.name = name
         self.dateCreated = dateCreated
         self.notes = notes
-        self.closet = closet
         self.items = items
+        self.folder = folder
     }
 }
