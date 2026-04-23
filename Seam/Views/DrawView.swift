@@ -10,6 +10,7 @@ struct DrawView: View {
     @StateObject private var canvasHolder = CanvasHolder()
     @State private var canvasSize: CGSize = .zero
     @State private var showSaveSheet = false
+    @State private var pendingSnapshot: UIImage? = nil
 
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -121,6 +122,7 @@ struct DrawView: View {
             SaveSketchSheet(
                 drawing: drawing,
                 canvasSize: canvasSize,
+                snapshot: pendingSnapshot,
                 onSave: { _ in
                     drawing = PKDrawing()
                     close()
@@ -133,13 +135,19 @@ struct DrawView: View {
         if isEditMode {
             saveEditedSketch()
         } else {
-            if !drawing.strokes.isEmpty { showSaveSheet = true } else { close() }
+            if !drawing.strokes.isEmpty {
+                pendingSnapshot = canvasHolder.snapshotCropped(drawing: drawing)
+                showSaveSheet = true
+            } else {
+                close()
+            }
         }
     }
 
     private func saveEditedSketch() {
         guard let item = editingItem else { return }
-        let sketchImage = drawing.transparentCropped(canvasSize: canvasSize)
+        let sketchImage = canvasHolder.snapshotCropped(drawing: drawing)
+            ?? drawing.transparentCropped(canvasSize: canvasSize)
         item.sketchData = sketchImage.pngData()
         item.drawingData = drawing.dataRepresentation()
         try? modelContext.save()

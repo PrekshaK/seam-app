@@ -14,6 +14,32 @@ class CanvasHolder: ObservableObject {
     func redo() { canvasView?.undoManager?.redo() }
     func clear() { canvasView?.drawing = PKDrawing() }
 
+    func snapshotCropped(drawing: PKDrawing, padding: CGFloat = 32, scale: CGFloat = 2.0) -> UIImage? {
+        guard let canvas = canvasView, let container = canvas.superview else { return nil }
+        let containerBounds = container.bounds
+        guard !containerBounds.isEmpty else { return nil }
+
+        let cropRect: CGRect
+        if drawing.bounds.isEmpty {
+            cropRect = containerBounds
+        } else {
+            cropRect = drawing.bounds.insetBy(dx: -padding, dy: -padding).intersection(containerBounds)
+        }
+
+        let fullSize = CGSize(width: containerBounds.width * scale, height: containerBounds.height * scale)
+        let fullImage = UIGraphicsImageRenderer(size: fullSize).image { ctx in
+            ctx.cgContext.scaleBy(x: scale, y: scale)
+            container.drawHierarchy(in: containerBounds, afterScreenUpdates: false)
+        }
+
+        let cropInPixels = CGRect(
+            x: cropRect.minX * scale, y: cropRect.minY * scale,
+            width: cropRect.width * scale, height: cropRect.height * scale
+        )
+        guard let cgImage = fullImage.cgImage?.cropping(to: cropInPixels) else { return fullImage }
+        return UIImage(cgImage: cgImage)
+    }
+
     func showTools() {
         guard let canvas = canvasView else { return }
         toolPicker.setVisible(true, forFirstResponder: canvas)

@@ -5,21 +5,22 @@ struct ItemDetailView: View {
     let item: ClothingItem
     var onSketchEdit: (ClothingItem) -> Void = { _ in }
     var onDelete: () -> Void = {}
+    var onDone: () -> Void = {}
 
     @State private var name: String
     @State private var category: ClothingCategory
     @State private var notes: String
-    @State private var saved = false
     @State private var selectedClosetIds: Set<UUID>
     @State private var showDeleteConfirmation = false
 
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Closet.dateCreated) private var allClosets: [Closet]
 
-    init(item: ClothingItem, onSketchEdit: @escaping (ClothingItem) -> Void = { _ in }, onDelete: @escaping () -> Void = {}) {
+    init(item: ClothingItem, onSketchEdit: @escaping (ClothingItem) -> Void = { _ in }, onDelete: @escaping () -> Void = {}, onDone: @escaping () -> Void = {}) {
         self.item = item
         self.onSketchEdit = onSketchEdit
         self.onDelete = onDelete
+        self.onDone = onDone
         _name = State(initialValue: item.name)
         _category = State(initialValue: item.category)
         _notes = State(initialValue: item.notes ?? "")
@@ -41,7 +42,6 @@ struct ItemDetailView: View {
                                 Image(uiImage: uiImage)
                                     .resizable()
                                     .aspectRatio(contentMode: .fit)
-                                    .blendMode(.multiply)
                             }
                             .frame(maxHeight: 260)
                             .cornerRadius(20)
@@ -144,21 +144,6 @@ struct ItemDetailView: View {
                             .background(RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(0.1)))
                     }
 
-                    // Save button
-                    Button(action: save) {
-                        HStack(spacing: 8) {
-                            Image(systemName: saved ? "checkmark.circle.fill" : "square.and.arrow.down")
-                                .font(.system(size: 18))
-                            Text(saved ? "Saved!" : "Save Changes")
-                                .font(.custom("PatrickHand-Regular", size: 22))
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(RoundedRectangle(cornerRadius: 16).fill(saved ? Color.antiqueTeal : Color.terracotta))
-                        .animation(.easeInOut(duration: 0.2), value: saved)
-                    }
-
                     // Delete button
                     Button(action: { showDeleteConfirmation = true }) {
                         HStack(spacing: 8) {
@@ -180,6 +165,16 @@ struct ItemDetailView: View {
         }
         .navigationTitle(item.name.isEmpty ? item.category.rawValue : item.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Done") {
+                    save()
+                    onDone()
+                }
+                .font(.custom("PatrickHand-Regular", size: 18))
+                .foregroundColor(.terracotta)
+            }
+        }
         .confirmationDialog(
             "Delete \"\(item.name.isEmpty ? item.category.rawValue : item.name)\"?",
             isPresented: $showDeleteConfirmation,
@@ -198,7 +193,6 @@ struct ItemDetailView: View {
             category = newItem.category
             notes = newItem.notes ?? ""
             selectedClosetIds = Set(newItem.closets.map(\.id))
-            saved = false
         }
     }
 
@@ -216,9 +210,5 @@ struct ItemDetailView: View {
         item.notes = notes.isEmpty ? nil : notes
         item.closets = allClosets.filter { selectedClosetIds.contains($0.id) }
         try? modelContext.save()
-        saved = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            saved = false
-        }
     }
 }

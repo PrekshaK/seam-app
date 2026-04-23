@@ -5,6 +5,7 @@ import PencilKit
 struct SaveSketchSheet: View {
     let drawing: PKDrawing
     let canvasSize: CGSize
+    var snapshot: UIImage? = nil
     let onSave: (ClothingItem) -> Void
 
     @State private var itemName = ""
@@ -17,7 +18,7 @@ struct SaveSketchSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Closet.dateCreated) private var allClosets: [Closet]
 
-    private var preview: UIImage? { drawing.transparentCropped(canvasSize: canvasSize) }
+    private var preview: UIImage? { snapshot ?? drawing.transparentCropped(canvasSize: canvasSize) }
 
     var body: some View {
         NavigationView {
@@ -34,7 +35,6 @@ struct SaveSketchSheet: View {
                                 Image(uiImage: uiImage)
                                     .resizable()
                                     .aspectRatio(contentMode: .fit)
-                                    .blendMode(.multiply)
                             }
                             .frame(maxHeight: 240)
                             .cornerRadius(20)
@@ -166,7 +166,7 @@ struct SaveSketchSheet: View {
     }
 
     private func saveItem() {
-        let sketchImage = drawing.transparentCropped(canvasSize: canvasSize)
+        let sketchImage = snapshot ?? drawing.transparentCropped(canvasSize: canvasSize)
         isSaving = true
         let item = ClothingItem(
             name: itemName.isEmpty ? "Untitled" : itemName,

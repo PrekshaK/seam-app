@@ -48,7 +48,7 @@ struct OutfitCanvasView: View {
         }
         .background(Color("SoftBackground").ignoresSafeArea())
         .navigationBarHidden(true)
-        .onChange(of: canvasSize) { size in
+        .onChange(of: canvasSize) { _, size in
             guard size != .zero, !didLoadPlacements else { return }
             didLoadPlacements = true
             if let outfit = existingOutfit { loadPlacements(from: outfit) }

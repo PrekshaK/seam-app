@@ -48,17 +48,9 @@ struct ItemsView: View {
                         selectedItem = nil
                         onSketchEdit(editItem)
                     },
-                    onDelete: {
-                        selectedItem = nil
-                    }
+                    onDelete: { selectedItem = nil },
+                    onDone: { selectedItem = nil }
                 )
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Done") { selectedItem = nil }
-                            .font(.custom("PatrickHand-Regular", size: 18))
-                            .foregroundColor(.terracotta)
-                    }
-                }
             }
         }
         .sheet(isPresented: $showCreateCloset) {
