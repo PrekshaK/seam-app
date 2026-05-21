@@ -166,12 +166,11 @@ struct SaveSketchSheet: View {
     }
 
     private func saveItem() {
-        let sketchImage = snapshot ?? drawing.transparentCropped(canvasSize: canvasSize)
         isSaving = true
         let item = ClothingItem(
             name: itemName.isEmpty ? "Untitled" : itemName,
             category: selectedCategory,
-            sketchData: sketchImage.pngData(),
+            sketchData: drawing.centeredTransparent()?.pngData(),
             drawingData: drawing.dataRepresentation(),
             notes: notes.isEmpty ? nil : notes,
             closets: allClosets.filter { selectedClosetIds.contains($0.id) }

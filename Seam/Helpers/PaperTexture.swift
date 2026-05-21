@@ -93,6 +93,29 @@ enum PaperTexture {
 }
 
 extension PKDrawing {
+    /// 300×300 transparent PNG, drawing scaled and centered. Use this for sketchData —
+    /// each display site provides its own background (card, canvas, thumbnail renderer).
+    func centeredTransparent(outputSize: CGSize = CGSize(width: 300, height: 300),
+                              padding: CGFloat = 32,
+                              scale: CGFloat = 2.0) -> UIImage? {
+        let drawBounds = bounds
+        guard !drawBounds.isEmpty else { return nil }
+        let available = CGSize(width: outputSize.width - 2 * padding,
+                               height: outputSize.height - 2 * padding)
+        let drawScale = min(available.width / drawBounds.width,
+                            available.height / drawBounds.height)
+        let offsetX = (outputSize.width  - drawBounds.width  * drawScale) / 2
+        let offsetY = (outputSize.height - drawBounds.height * drawScale) / 2
+        let transform = CGAffineTransform(
+            a: drawScale, b: 0, c: 0, d: drawScale,
+            tx: offsetX - drawBounds.minX * drawScale,
+            ty: offsetY - drawBounds.minY * drawScale
+        )
+        var centered = self
+        centered.transform(using: transform)
+        return centered.image(from: CGRect(origin: .zero, size: outputSize), scale: scale)
+    }
+
     /// Crops to stroke bounds with padding, composited onto paper texture using multiply
     /// blend so the white PencilKit background becomes the paper color.
     func imageOnPaper(canvasSize: CGSize, padding: CGFloat = 32, scale: CGFloat = 2.0) -> UIImage {

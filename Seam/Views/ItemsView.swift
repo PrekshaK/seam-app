@@ -549,7 +549,6 @@ struct ClothingItemCard: View {
                         .scaledToFit()
                         .padding(10)
                         .frame(width: 100, height: 100)
-                        .blendMode(.multiply)
                 } else {
                     CategoryIcon(category: item.category, size: 36)
                         .foregroundColor(.terracotta.opacity(0.5))

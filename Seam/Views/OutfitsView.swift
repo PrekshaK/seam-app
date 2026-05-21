@@ -133,7 +133,7 @@ struct OutfitGridView: View {
     let onEdit: (Outfit) -> Void
 
     @Environment(\.modelContext) private var modelContext
-    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
+    private let columns = [GridItem(.adaptive(minimum: 90, maximum: 130))]
 
     var body: some View {
         ZStack {
@@ -143,7 +143,7 @@ struct OutfitGridView: View {
                 emptyState
             } else {
                 ScrollView {
-                    LazyVGrid(columns: columns, spacing: 28) {
+                    LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(outfits) { outfit in
                             Button(action: { onEdit(outfit) }) {
                                 OutfitPolaroidCard(outfit: outfit)
@@ -159,9 +159,9 @@ struct OutfitGridView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 24)
-                    .padding(.bottom, 32)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 24)
                 }
             }
         }
@@ -383,7 +383,10 @@ struct CreateOutfitFolderSheet: View {
 
 struct OutfitPolaroidCard: View {
     let outfit: Outfit
-    @State private var thumbnail: UIImage?
+
+    private var thumbnail: UIImage? {
+        outfit.thumbnailData.flatMap { UIImage(data: $0) }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -396,35 +399,23 @@ struct OutfitPolaroidCard: View {
                         .clipped()
                 } else {
                     Image(systemName: "hanger")
-                        .font(.system(size: 36))
+                        .font(.system(size: 20))
                         .foregroundColor(.antiqueTeal.opacity(0.25))
                 }
             }
             .aspectRatio(1, contentMode: .fit)
 
-            VStack(spacing: 3) {
-                Text(outfit.name)
-                    .font(.custom("PatrickHand-Regular", size: 16))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                Text("\(outfit.items.count) item\(outfit.items.count == 1 ? "" : "s")")
-                    .font(.custom("PatrickHand-Regular", size: 12))
-                    .foregroundColor(.white.opacity(0.7))
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity)
-            .background(Color.terracotta.opacity(0.72))
+            Text(outfit.name)
+                .font(.custom("PatrickHand-Regular", size: 11))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity)
+                .background(Color.terracotta.opacity(0.72))
         }
         .clipShape(RoundedRectangle(cornerRadius: 2))
-        .shadow(color: Color.warmShadow.opacity(0.18), radius: 8, x: 0, y: 4)
-        .padding(.vertical, 6)
-        .onAppear {
-            if let data = outfit.thumbnailData, let img = UIImage(data: data) {
-                thumbnail = img
-            } else {
-                thumbnail = outfit.renderThumbnail()
-            }
-        }
+        .shadow(color: Color.warmShadow.opacity(0.18), radius: 6, x: 0, y: 3)
+        .padding(.vertical, 4)
     }
 }

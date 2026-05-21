@@ -7,49 +7,75 @@ class CanvasHolder: ObservableObject {
 
     func setup(_ canvas: PKCanvasView) {
         canvasView = canvas
-        toolPicker.addObserver(canvas)
+        // Do NOT add observer here — showTools/hideTools manage the lifecycle
     }
 
     func undo() { canvasView?.undoManager?.undo() }
     func redo() { canvasView?.undoManager?.redo() }
     func clear() { canvasView?.drawing = PKDrawing() }
 
+    // Renders the drawing onto a fixed 300×300 paper-texture thumbnail with the
+    // drawing scaled and centered. Avoids any dependency on canvas frame or coordinate
+    // offsets — drawing.bounds is used directly, then a transform centers it.
     func snapshotCropped(drawing: PKDrawing, padding: CGFloat = 32, scale: CGFloat = 2.0) -> UIImage? {
-        guard let canvas = canvasView, let container = canvas.superview else { return nil }
-        let containerBounds = container.bounds
-        guard !containerBounds.isEmpty else { return nil }
+        let drawBounds = drawing.bounds
+        guard !drawBounds.isEmpty else { return nil }
 
-        let cropRect: CGRect
-        if drawing.bounds.isEmpty {
-            cropRect = containerBounds
-        } else {
-            cropRect = drawing.bounds.insetBy(dx: -padding, dy: -padding).intersection(containerBounds)
-        }
+        let outputSize = CGSize(width: 300, height: 300)
+        let available = CGSize(width: outputSize.width - 2 * padding,
+                               height: outputSize.height - 2 * padding)
+        let drawScale = min(available.width / drawBounds.width,
+                            available.height / drawBounds.height)
+        let scaledW = drawBounds.width * drawScale
+        let scaledH = drawBounds.height * drawScale
+        let offsetX = (outputSize.width - scaledW) / 2
+        let offsetY = (outputSize.height - scaledH) / 2
 
-        let fullSize = CGSize(width: containerBounds.width * scale, height: containerBounds.height * scale)
-        let fullImage = UIGraphicsImageRenderer(size: fullSize).image { ctx in
-            ctx.cgContext.scaleBy(x: scale, y: scale)
-            container.drawHierarchy(in: containerBounds, afterScreenUpdates: false)
-        }
-
-        let cropInPixels = CGRect(
-            x: cropRect.minX * scale, y: cropRect.minY * scale,
-            width: cropRect.width * scale, height: cropRect.height * scale
+        // Transform: move drawing origin to (0,0), scale it, then offset to center
+        let transform = CGAffineTransform(
+            a: drawScale, b: 0, c: 0, d: drawScale,
+            tx: offsetX - drawBounds.minX * drawScale,
+            ty: offsetY - drawBounds.minY * drawScale
         )
-        guard let cgImage = fullImage.cgImage?.cropping(to: cropInPixels) else { return fullImage }
-        return UIImage(cgImage: cgImage)
+        var centered = drawing
+        centered.transform(using: transform)
+
+        let drawingImage = centered.image(from: CGRect(origin: .zero, size: outputSize), scale: scale)
+
+        return UIGraphicsImageRenderer(size: outputSize).image { ctx in
+            PaperTexture.render(in: CGRect(origin: .zero, size: outputSize), context: ctx.cgContext)
+            drawingImage.draw(at: .zero)
+        }
+    }
+
+    func forceReloadDrawing(_ drawing: PKDrawing) {
+        guard let canvas = canvasView else { return }
+        // Empty-then-real assignment forces PencilKit to fully reset interaction state
+        // (clears lasso selection overlay without touching tool picker state)
+        canvas.drawing = PKDrawing()
+        canvas.drawing = drawing
+    }
+
+    func setInteractionEnabled(_ enabled: Bool) {
+        canvasView?.isUserInteractionEnabled = enabled
     }
 
     func showTools() {
         guard let canvas = canvasView else { return }
+        toolPicker.addObserver(canvas)
         toolPicker.setVisible(true, forFirstResponder: canvas)
-        canvas.becomeFirstResponder()
+        DispatchQueue.main.async {
+            canvas.becomeFirstResponder()
+        }
     }
 
     func hideTools() {
         guard let canvas = canvasView else { return }
         toolPicker.setVisible(false, forFirstResponder: canvas)
-        canvas.resignFirstResponder()
+        toolPicker.removeObserver(canvas)
+        // Globally resign first responder — handles edge cases where the canvas
+        // may not be the active first responder when this is called
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
@@ -114,7 +140,27 @@ struct PencilCanvasView: UIViewRepresentable {
         init(_ parent: PencilCanvasView) { self.parent = parent }
 
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-            parent.drawing = canvasView.drawing
+            let tc = canvasView.traitCollection
+            let strokes = canvasView.drawing.strokes
+            // Detect adaptive (dynamic) ink colors — they resolve differently in light vs dark.
+            // Bake them to literal values so the stored drawing never adapts again.
+            let hasAdaptive = strokes.contains {
+                let light = $0.ink.color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
+                let dark  = $0.ink.color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark))
+                return light != dark
+            }
+            if hasAdaptive {
+                let baked = PKDrawing(strokes: strokes.map { stroke in
+                    PKStroke(ink: PKInk(stroke.ink.inkType,
+                                       color: stroke.ink.color.resolvedColor(with: tc)),
+                             path: stroke.path,
+                             transform: stroke.transform)
+                })
+                canvasView.drawing = baked
+                parent.drawing = baked
+            } else {
+                parent.drawing = canvasView.drawing
+            }
         }
     }
 }
