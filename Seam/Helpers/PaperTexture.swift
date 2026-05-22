@@ -142,4 +142,22 @@ extension PKDrawing {
             ? CGRect(origin: .zero, size: canvasSize)
             : bounds.insetBy(dx: -padding, dy: -padding)
     }
+
+    /// Returns a copy of the drawing with all adaptive UIColors resolved to literal values
+    /// using the given interface style. Idempotent on drawings that are already literal.
+    func bakingAdaptiveColors(to style: UIUserInterfaceStyle) -> PKDrawing {
+        let lightTC = UITraitCollection(userInterfaceStyle: .light)
+        let darkTC  = UITraitCollection(userInterfaceStyle: .dark)
+        let tc      = UITraitCollection(userInterfaceStyle: style)
+        let hasAdaptive = strokes.contains {
+            $0.ink.color.resolvedColor(with: lightTC) != $0.ink.color.resolvedColor(with: darkTC)
+        }
+        guard hasAdaptive else { return self }
+        return PKDrawing(strokes: strokes.map { stroke in
+            PKStroke(ink: PKInk(stroke.ink.inkType,
+                               color: stroke.ink.color.resolvedColor(with: tc)),
+                    path: stroke.path,
+                    transform: stroke.transform)
+        })
+    }
 }

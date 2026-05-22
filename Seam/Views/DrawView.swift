@@ -103,7 +103,7 @@ struct DrawView: View {
                         .disabled(drawing.strokes.isEmpty)
                         .opacity(drawing.strokes.isEmpty ? 0.3 : 1.0)
 
-                        Button(action: { canvasHolder.clear() }) {
+                        Button(action: { drawing = PKDrawing() }) {
                             Image(systemName: "trash")
                                 .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(.red.opacity(0.7))

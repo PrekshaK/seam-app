@@ -140,10 +140,12 @@ struct PencilCanvasView: UIViewRepresentable {
         init(_ parent: PencilCanvasView) { self.parent = parent }
 
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-            let tc = canvasView.traitCollection
             let strokes = canvasView.drawing.strokes
-            // Detect adaptive (dynamic) ink colors — they resolve differently in light vs dark.
-            // Bake them to literal values so the stored drawing never adapts again.
+            // Bake adaptive ink colors to literal values using the canvas's current
+            // trait collection. This ensures "what you see is what gets stored" —
+            // the baked literal color matches exactly what is rendered on screen,
+            // regardless of whether the device is in light or dark mode.
+            let canvasTC = canvasView.traitCollection
             let hasAdaptive = strokes.contains {
                 let light = $0.ink.color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
                 let dark  = $0.ink.color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark))
@@ -152,11 +154,14 @@ struct PencilCanvasView: UIViewRepresentable {
             if hasAdaptive {
                 let baked = PKDrawing(strokes: strokes.map { stroke in
                     PKStroke(ink: PKInk(stroke.ink.inkType,
-                                       color: stroke.ink.color.resolvedColor(with: tc)),
+                                       color: stroke.ink.color.resolvedColor(with: canvasTC)),
                              path: stroke.path,
                              transform: stroke.transform)
                 })
-                canvasView.drawing = baked
+                // Only update the SwiftUI binding — updateUIView will push the baked
+                // drawing back to the canvas. Setting canvasView.drawing here races
+                // with SwiftUI's own updateUIView cycle and can overwrite the baked
+                // result with the stale binding value.
                 parent.drawing = baked
             } else {
                 parent.drawing = canvasView.drawing
