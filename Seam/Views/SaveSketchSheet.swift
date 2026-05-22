@@ -167,11 +167,12 @@ struct SaveSketchSheet: View {
 
     private func saveItem() {
         isSaving = true
+        let baked = drawing.bakingAdaptiveColors(to: .light)
         let item = ClothingItem(
             name: itemName.isEmpty ? "Untitled" : itemName,
             category: selectedCategory,
-            sketchData: drawing.centeredTransparent()?.pngData(),
-            drawingData: drawing.dataRepresentation(),
+            sketchData: baked.centeredTransparent()?.pngData(),
+            drawingData: baked.dataRepresentation(),
             notes: notes.isEmpty ? nil : notes,
             closets: allClosets.filter { selectedClosetIds.contains($0.id) }
         )

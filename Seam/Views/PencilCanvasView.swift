@@ -40,7 +40,10 @@ class CanvasHolder: ObservableObject {
         var centered = drawing
         centered.transform(using: transform)
 
-        let drawingImage = centered.image(from: CGRect(origin: .zero, size: outputSize), scale: scale)
+        var drawingImage: UIImage!
+        UITraitCollection(userInterfaceStyle: .light).performAsCurrent {
+            drawingImage = centered.image(from: CGRect(origin: .zero, size: outputSize), scale: scale)
+        }
 
         return UIGraphicsImageRenderer(size: outputSize).image { ctx in
             PaperTexture.render(in: CGRect(origin: .zero, size: outputSize), context: ctx.cgContext)
@@ -116,6 +119,7 @@ struct PencilCanvasView: UIViewRepresentable {
         let canvas = PKCanvasView()
         canvas.drawing = drawing
         canvas.backgroundColor = .clear
+        canvas.overrideUserInterfaceStyle = .light
         canvas.drawingPolicy = .anyInput
         canvas.isScrollEnabled = false
         canvas.delegate = context.coordinator
@@ -140,32 +144,7 @@ struct PencilCanvasView: UIViewRepresentable {
         init(_ parent: PencilCanvasView) { self.parent = parent }
 
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
-            let strokes = canvasView.drawing.strokes
-            // Bake adaptive ink colors to literal values using the canvas's current
-            // trait collection. This ensures "what you see is what gets stored" —
-            // the baked literal color matches exactly what is rendered on screen,
-            // regardless of whether the device is in light or dark mode.
-            let canvasTC = canvasView.traitCollection
-            let hasAdaptive = strokes.contains {
-                let light = $0.ink.color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
-                let dark  = $0.ink.color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark))
-                return light != dark
-            }
-            if hasAdaptive {
-                let baked = PKDrawing(strokes: strokes.map { stroke in
-                    PKStroke(ink: PKInk(stroke.ink.inkType,
-                                       color: stroke.ink.color.resolvedColor(with: canvasTC)),
-                             path: stroke.path,
-                             transform: stroke.transform)
-                })
-                // Only update the SwiftUI binding — updateUIView will push the baked
-                // drawing back to the canvas. Setting canvasView.drawing here races
-                // with SwiftUI's own updateUIView cycle and can overwrite the baked
-                // result with the stale binding value.
-                parent.drawing = baked
-            } else {
-                parent.drawing = canvasView.drawing
-            }
+            parent.drawing = canvasView.drawing
         }
     }
 }

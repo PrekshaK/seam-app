@@ -240,8 +240,9 @@ struct DrawView: View {
 
     private func saveEditedSketch() {
         guard let item = editingItem else { return }
-        item.sketchData = drawing.centeredTransparent()?.pngData()
-        item.drawingData = drawing.dataRepresentation()
+        let baked = drawing.bakingAdaptiveColors(to: .light)
+        item.sketchData = baked.centeredTransparent()?.pngData()
+        item.drawingData = baked.dataRepresentation()
         try? modelContext.save()
         close()
     }
