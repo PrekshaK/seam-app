@@ -225,22 +225,32 @@ struct OutfitCanvasView: View {
     }
 
     private func loadPlacements(from outfit: Outfit) {
-        if let data = outfit.placementsData,
-           let placements = try? JSONDecoder().decode([OutfitItemPlacement].self, from: data) {
-            canvasItems = placements.compactMap { p in
-                guard let item = outfit.items.first(where: { $0.id == p.itemId }) else { return nil }
-                return CanvasItemState(item: item, position: CGPoint(x: p.x, y: p.y), scale: CGFloat(p.scale))
-            }
+        guard let data = outfit.placementsData else {
+            canvasItems = gridFallback(for: outfit.items)
+            return
+        }
+        // Try new format (payload with canvas size) first, then legacy array format
+        let placements: [OutfitItemPlacement]
+        if let payload = try? JSONDecoder().decode(OutfitPlacementsPayload.self, from: data) {
+            placements = payload.placements
+        } else if let legacy = try? JSONDecoder().decode([OutfitItemPlacement].self, from: data) {
+            placements = legacy
         } else {
-            // No saved positions — spread items in a grid
-            canvasItems = outfit.items.enumerated().map { idx, item in
-                let col = CGFloat(idx % 3)
-                let row = CGFloat(idx / 3)
-                return CanvasItemState(
-                    item: item,
-                    position: CGPoint(x: 80 + col * 110, y: 100 + row * 130)
-                )
-            }
+            canvasItems = gridFallback(for: outfit.items)
+            return
+        }
+        let mapped = placements.compactMap { p -> CanvasItemState? in
+            guard let item = outfit.items.first(where: { $0.id == p.itemId }) else { return nil }
+            return CanvasItemState(item: item, position: CGPoint(x: p.x, y: p.y), scale: CGFloat(p.scale))
+        }
+        canvasItems = mapped.isEmpty ? gridFallback(for: outfit.items) : mapped
+    }
+
+    private func gridFallback(for items: [ClothingItem]) -> [CanvasItemState] {
+        items.enumerated().map { idx, item in
+            let col = CGFloat(idx % 3)
+            let row = CGFloat(idx / 3)
+            return CanvasItemState(item: item, position: CGPoint(x: 80 + col * 110, y: 100 + row * 130))
         }
     }
 
@@ -248,7 +258,12 @@ struct OutfitCanvasView: View {
         let placements = canvasItems.map {
             OutfitItemPlacement(itemId: $0.item.id, x: $0.position.x, y: $0.position.y, scale: Double($0.scale))
         }
-        let placementsData = try? JSONEncoder().encode(placements)
+        let payload = OutfitPlacementsPayload(
+            canvasWidth: Double(canvasSize.width),
+            canvasHeight: Double(canvasSize.height),
+            placements: placements
+        )
+        let placementsData = try? JSONEncoder().encode(payload)
 
         if let outfit = existingOutfit {
             outfit.name = outfitName.isEmpty ? "Untitled Outfit" : outfitName
@@ -278,26 +293,65 @@ struct OutfitCanvasView: View {
 // MARK: - Outfit thumbnail renderer
 
 extension Outfit {
-    func renderThumbnail(targetSize: CGSize = CGSize(width: 200, height: 280)) -> UIImage? {
-        guard let placementsData,
-              let placements = try? JSONDecoder().decode([OutfitItemPlacement].self, from: placementsData),
-              !placements.isEmpty else { return nil }
+    func renderThumbnail(targetSize: CGSize = CGSize(width: 300, height: 300)) -> UIImage? {
+        guard let placementsData else { return nil }
 
         let baseItemSize: CGFloat = 100
 
-        // Find bounding box of all placed items
-        let xs = placements.map { CGFloat($0.x) }
-        let ys = placements.map { CGFloat($0.y) }
-        let minX = xs.min()! - baseItemSize / 2
-        let maxX = xs.max()! + baseItemSize / 2
-        let minY = ys.min()! - baseItemSize / 2
-        let maxY = ys.max()! + baseItemSize / 2
-        let contentW = max(maxX - minX, 1)
-        let contentH = max(maxY - minY, 1)
+        // Try new format (canvas size + placements)
+        if let payload = try? JSONDecoder().decode(OutfitPlacementsPayload.self, from: placementsData),
+           !payload.placements.isEmpty {
+            return renderWithCanvasSize(
+                payload.placements,
+                canvasW: CGFloat(payload.canvasWidth),
+                canvasH: CGFloat(payload.canvasHeight),
+                baseItemSize: baseItemSize,
+                targetSize: targetSize
+            )
+        }
 
-        let scale = min(targetSize.width / contentW, targetSize.height / contentH)
-        let offsetX = (targetSize.width  - contentW * scale) / 2
-        let offsetY = (targetSize.height - contentH * scale) / 2
+        // Fallback: legacy format — use tight bounding box with padding
+        guard let legacy = try? JSONDecoder().decode([OutfitItemPlacement].self, from: placementsData),
+              !legacy.isEmpty else { return nil }
+        return renderWithBoundingBox(legacy, baseItemSize: baseItemSize, targetSize: targetSize)
+    }
+
+    private func renderWithCanvasSize(
+        _ placements: [OutfitItemPlacement],
+        canvasW: CGFloat, canvasH: CGFloat,
+        baseItemSize: CGFloat,
+        targetSize: CGSize
+    ) -> UIImage {
+        // Bounding box of each item's visual extent (center ± half scaled size)
+        var minX = CGFloat.infinity, minY = CGFloat.infinity
+        var maxX = -CGFloat.infinity, maxY = -CGFloat.infinity
+        for p in placements {
+            let half = baseItemSize * CGFloat(p.scale) / 2
+            minX = min(minX, CGFloat(p.x) - half)
+            maxX = max(maxX, CGFloat(p.x) + half)
+            minY = min(minY, CGFloat(p.y) - half)
+            maxY = max(maxY, CGFloat(p.y) + half)
+        }
+        let contentW = maxX - minX
+        let contentH = maxY - minY
+
+        // Expand bounding box by 80% of content size (min 50pt) for breathing room,
+        // then clamp to canvas bounds — asymmetric clamping preserves edge context
+        // (e.g. item at bottom-right stays visually bottom-right in the thumbnail)
+        let padX = max(50, contentW * 0.8)
+        let padY = max(50, contentH * 0.8)
+        let cropMinX = max(0, minX - padX)
+        let cropMaxX = min(canvasW, maxX + padX)
+        let cropMinY = max(0, minY - padY)
+        let cropMaxY = min(canvasH, maxY + padY)
+        let cropW = cropMaxX - cropMinX
+        let cropH = cropMaxY - cropMinY
+
+        let fitScale = min(targetSize.width / cropW, targetSize.height / cropH)
+        let drawW = cropW * fitScale
+        let drawH = cropH * fitScale
+        let originX = (targetSize.width - drawW) / 2
+        let originY = (targetSize.height - drawH) / 2
 
         return UIGraphicsImageRenderer(size: targetSize).image { ctx in
             PaperTexture.render(in: CGRect(origin: .zero, size: targetSize), context: ctx.cgContext)
@@ -305,10 +359,56 @@ extension Outfit {
                 guard let item = items.first(where: { $0.id == p.itemId }),
                       let data = item.sketchData,
                       let img = UIImage(data: data) else { continue }
-                let s = baseItemSize * CGFloat(p.scale) * scale
-                let x = (CGFloat(p.x) - minX) * scale + offsetX - s / 2
-                let y = (CGFloat(p.y) - minY) * scale + offsetY - s / 2
-                img.draw(in: CGRect(x: x, y: y, width: s, height: s))
+                let s = baseItemSize * CGFloat(p.scale) * fitScale
+                let cx = (CGFloat(p.x) - cropMinX) * fitScale + originX
+                let cy = (CGFloat(p.y) - cropMinY) * fitScale + originY
+                img.draw(in: CGRect(x: cx - s / 2, y: cy - s / 2, width: s, height: s))
+            }
+        }
+    }
+
+    private func renderWithBoundingBox(
+        _ placements: [OutfitItemPlacement],
+        baseItemSize: CGFloat,
+        targetSize: CGSize
+    ) -> UIImage {
+        var minX = CGFloat.infinity, minY = CGFloat.infinity
+        var maxX = -CGFloat.infinity, maxY = -CGFloat.infinity
+        for p in placements {
+            let half = baseItemSize * CGFloat(p.scale) / 2
+            minX = min(minX, CGFloat(p.x) - half)
+            maxX = max(maxX, CGFloat(p.x) + half)
+            minY = min(minY, CGFloat(p.y) - half)
+            maxY = max(maxY, CGFloat(p.y) + half)
+        }
+        let contentW = maxX - minX
+        let contentH = maxY - minY
+
+        let padX = max(50, contentW * 0.8)
+        let padY = max(50, contentH * 0.8)
+        let cropMinX = minX - padX
+        let cropMaxX = maxX + padX
+        let cropMinY = minY - padY
+        let cropMaxY = maxY + padY
+        let cropW = cropMaxX - cropMinX
+        let cropH = cropMaxY - cropMinY
+
+        let fitScale = min(targetSize.width / cropW, targetSize.height / cropH)
+        let drawW = cropW * fitScale
+        let drawH = cropH * fitScale
+        let offsetX = (targetSize.width - drawW) / 2
+        let offsetY = (targetSize.height - drawH) / 2
+
+        return UIGraphicsImageRenderer(size: targetSize).image { ctx in
+            PaperTexture.render(in: CGRect(origin: .zero, size: targetSize), context: ctx.cgContext)
+            for p in placements {
+                guard let item = items.first(where: { $0.id == p.itemId }),
+                      let data = item.sketchData,
+                      let img = UIImage(data: data) else { continue }
+                let s = baseItemSize * CGFloat(p.scale) * fitScale
+                let cx = (CGFloat(p.x) - cropMinX) * fitScale + offsetX
+                let cy = (CGFloat(p.y) - cropMinY) * fitScale + offsetY
+                img.draw(in: CGRect(x: cx - s / 2, y: cy - s / 2, width: s, height: s))
             }
         }
     }

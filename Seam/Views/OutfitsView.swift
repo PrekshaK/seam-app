@@ -395,8 +395,7 @@ struct OutfitPolaroidCard: View {
                 if let image = thumbnail {
                     Image(uiImage: image)
                         .resizable()
-                        .scaledToFill()
-                        .clipped()
+                        .scaledToFit()
                 } else {
                     Image(systemName: "hanger")
                         .font(.system(size: 20))
