@@ -453,19 +453,18 @@ struct DraggableCanvasItem: View {
                         state = value.translation
                     }
                     .onEnded { value in
-                        let half = baseSize * scale / 2
-                        position.x = max(half, min(canvasSize.width - half,
+                        position.x = max(0, min(canvasSize.width,
                             position.x + value.translation.width))
-                        position.y = max(half, min(canvasSize.height - half,
+                        position.y = max(0, min(canvasSize.height,
                             position.y + value.translation.height))
                     }
-                    .simultaneously(with:
-                        MagnificationGesture()
-                            .updating($pinchScale) { value, state, _ in state = value }
-                            .onEnded { value in
-                                scale = max(0.3, min(3.0, scale * value))
-                            }
-                    )
+            )
+            .simultaneousGesture(
+                MagnificationGesture()
+                    .updating($pinchScale) { value, state, _ in state = value }
+                    .onEnded { value in
+                        scale = max(0.3, min(3.0, scale * value))
+                    }
             )
     }
 
