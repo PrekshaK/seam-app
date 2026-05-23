@@ -424,14 +424,16 @@ struct DraggableCanvasItem: View {
     let canvasSize: CGSize
 
     @GestureState private var dragOffset: CGSize = .zero
-    @GestureState private var pinchScale: CGFloat = 1.0
+    // Base scale at the start of each pinch gesture. MagnificationGesture reports
+    // cumulative values from 1.0, so we need this to correctly compound with prior scale.
+    @State private var pinchBaseScale: CGFloat = 1.0
 
     private let baseSize: CGFloat = 100
 
     var body: some View {
         itemContent
             .frame(width: baseSize, height: baseSize)
-            .scaleEffect(scale * pinchScale)
+            .scaleEffect(scale)
             .overlay(
                 Group {
                     if isActive {
@@ -447,6 +449,7 @@ struct DraggableCanvasItem: View {
                 x: position.x + dragOffset.width,
                 y: position.y + dragOffset.height
             )
+            .onAppear { pinchBaseScale = scale }
             .gesture(
                 DragGesture(minimumDistance: 2)
                     .updating($dragOffset) { value, state, _ in
@@ -458,13 +461,17 @@ struct DraggableCanvasItem: View {
                         position.y = max(0, min(canvasSize.height,
                             position.y + value.translation.height))
                     }
-            )
-            .simultaneousGesture(
-                MagnificationGesture()
-                    .updating($pinchScale) { value, state, _ in state = value }
-                    .onEnded { value in
-                        scale = max(0.3, min(3.0, scale * value))
-                    }
+                    .simultaneously(with:
+                        MagnificationGesture()
+                            .onChanged { value in
+                                // Commit live on every frame — scale itself IS the preview.
+                                // onEnded is unreliable inside .simultaneously so we skip it.
+                                scale = max(0.3, min(3.0, pinchBaseScale * value))
+                            }
+                            .onEnded { _ in
+                                pinchBaseScale = scale
+                            }
+                    )
             )
     }
 
