@@ -416,6 +416,12 @@ extension Outfit {
 
 // MARK: - Draggable item on canvas
 
+// Holds the last pinch magnification captured inside .updating.
+// A class (not @State) so mutations don't trigger SwiftUI re-renders mid-gesture.
+private final class PinchTracker: ObservableObject {
+    var lastValue: CGFloat = 1.0
+}
+
 struct DraggableCanvasItem: View {
     let item: ClothingItem
     @Binding var position: CGPoint
@@ -424,16 +430,15 @@ struct DraggableCanvasItem: View {
     let canvasSize: CGSize
 
     @GestureState private var dragOffset: CGSize = .zero
-    // Base scale at the start of each pinch gesture. MagnificationGesture reports
-    // cumulative values from 1.0, so we need this to correctly compound with prior scale.
-    @State private var pinchBaseScale: CGFloat = 1.0
+    @GestureState private var pinchScale: CGFloat = 1.0
+    @StateObject private var pinchTracker = PinchTracker()
 
     private let baseSize: CGFloat = 100
 
     var body: some View {
         itemContent
             .frame(width: baseSize, height: baseSize)
-            .scaleEffect(scale)
+            .scaleEffect(scale * pinchScale)
             .overlay(
                 Group {
                     if isActive {
@@ -449,7 +454,6 @@ struct DraggableCanvasItem: View {
                 x: position.x + dragOffset.width,
                 y: position.y + dragOffset.height
             )
-            .onAppear { pinchBaseScale = scale }
             .gesture(
                 DragGesture(minimumDistance: 2)
                     .updating($dragOffset) { value, state, _ in
@@ -463,13 +467,16 @@ struct DraggableCanvasItem: View {
                     }
                     .simultaneously(with:
                         MagnificationGesture()
-                            .onChanged { value in
-                                // Commit live on every frame — scale itself IS the preview.
-                                // onEnded is unreliable inside .simultaneously so we skip it.
-                                scale = max(0.3, min(3.0, pinchBaseScale * value))
+                            .updating($pinchScale) { value, state, _ in
+                                state = value
+                                // Capture value via class ref — no re-render, persists to onEnded
+                                self.pinchTracker.lastValue = value
                             }
                             .onEnded { _ in
-                                pinchBaseScale = scale
+                                // `value` param is unreliable (often 1.0); use lastValue instead
+                                guard pinchTracker.lastValue != 1.0 else { return }
+                                scale = max(0.3, min(3.0, scale * pinchTracker.lastValue))
+                                pinchTracker.lastValue = 1.0
                             }
                     )
             )
